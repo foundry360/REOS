@@ -1,6 +1,6 @@
 # REOS — Real Estate Operating System (GoHighLevel)
 
-GHL-native **Phase 1 AI team** (Concierge + Scheduler + Follow-Up + Scout): qualify, book, nurture, and daily-prioritize leads — using Conversation AI and Workflows inside GoHighLevel.
+GHL-native **Phase 1 AI team** (Researcher + Coordinator + Concierge + Scheduler + Follow-Up + Scout + Compliance Guard): confirm reachability, assign/route, qualify, book, nurture, daily-prioritize, and stop outreach on opt-out — using Conversation AI and Workflows inside GoHighLevel.
 
 This repo seeds CRM fields and ships copy-paste setup docs. There is **no** external AI orchestration server for the MVP.
 
@@ -25,10 +25,13 @@ npm run seed:fields
 
 Follow **[`docs/GHL_SETUP.md`](docs/GHL_SETUP.md)** for pipeline, tags, calendar, and bot.
 
-Build automations from **[`docs/WORKFLOWS.md`](docs/WORKFLOWS.md)** (Intake, Appointment Booked, Hot, Warm, Cold, Handoff).
+Build automations from **[`docs/WORKFLOWS.md`](docs/WORKFLOWS.md)** (Intake, Researcher, Coordinator, Compliance Guard, Appointment Booked, Hot, Warm, Cold, Handoff, Scheduler, Follow-Up, Scout).
 
-Paste bot instructions from:
+Paste bot / agent instructions from:
 
+- **[`docs/prompts/researcher.md`](docs/prompts/researcher.md)** — channel + language (workflow MVP)  
+- **[`docs/prompts/coordinator.md`](docs/prompts/coordinator.md)** — assign + which bot (workflow)  
+- **[`docs/prompts/compliance-guard.md`](docs/prompts/compliance-guard.md)** — opt-out kill-switch (workflow)  
 - **[`docs/prompts/lead-concierge.md`](docs/prompts/lead-concierge.md)** — qualify  
 - **[`docs/prompts/scheduler.md`](docs/prompts/scheduler.md)** — book  
 - **[`docs/prompts/follow-up.md`](docs/prompts/follow-up.md)** — nurture  
@@ -42,11 +45,14 @@ Use **[`docs/TESTING.md`](docs/TESTING.md)**.
 
 ```text
 Lead → GHL Form/FB/SMS
-    → Workflow: Intake (opportunity + start bot)
-    → Conversation AI: qualify + update fields + score + brief
-    → Book calendar if Hot/ready
-    → Tags temp_hot | temp_warm | temp_cold
-    → Native nurture / agent notify workflows
+    → Intake (opportunity + ai_qualifying)
+    → Researcher (channel tags + researcher_done)
+    → Coordinator (assign + exclusive bot; respects compliance_hold)
+    → Concierge: qualify + score + brief
+    → Hot/ready_to_book → Scheduler books
+    → Warm/Cold → Follow-Up → ready_to_book → Scheduler
+    → Scout: daily Hot booking catch
+    → Compliance Guard: opted_out → all bots Inactive
 ```
 
 | In GHL | In this repo |
@@ -67,6 +73,7 @@ Lead → GHL Form/FB/SMS
 - **Buyer:** Target Location, Budget, Property Type, Financing Status, Timeline, Must Have Features  
 - **Seller:** Property Address, Estimated Value, Selling Timeline, Motivation  
 - **Investor:** Investment Strategy, Target Markets, Investment Goals  
+- **Contact Preferences:** Preferred Channel, Preferred Language  
 - **AI:** AI Summary, Qualification Score, Recommended Next Action, Agent Brief  
 
 Identity (name/phone/email) uses native GHL fields.

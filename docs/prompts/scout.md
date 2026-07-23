@@ -69,7 +69,7 @@ Then branch the workflow on that output (or keep pure If/Else rules below — re
 
 | Existing | Scout relationship |
 |---|---|
-| **REOS Intake** | Already does new-lead → Concierge. Scout Daily covers **existing / stuck** leads. |
+| **REOS Intake** + **Researcher** | New-lead → Concierge. Scout Daily covers **existing / stuck** leads. |
 | **Start Scheduler** | Scout can add `ready_to_book` or `scout_priority` for Hot stuck leads |
 | **Start Follow-Up** | Scout can re-activate Follow-Up for silent Warm leads |
 | **Hot** | Scout P1 aligns with Hot + unbooked |

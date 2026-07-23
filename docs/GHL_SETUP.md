@@ -2,9 +2,9 @@
 
 Simple native workflow. No external AI server.
 
-**Flow:** Lead arrives → **Concierge** qualifies → Hot/`ready_to_book` → **Scheduler** books · Warm/Cold → **Follow-Up** nurtures → back to Scheduler when ready.
+**Flow:** Lead arrives → **Researcher** (channel) → **Coordinator** (assign + which bot) → **Concierge** qualifies → Hot/`ready_to_book` → **Scheduler** · Warm/Cold → **Follow-Up** · **Scout** daily priority · **Compliance Guard** stops bots on opt-out.
 
-Prompt packs: [`prompts/lead-concierge.md`](prompts/lead-concierge.md) · [`prompts/scheduler.md`](prompts/scheduler.md) · [`prompts/follow-up.md`](prompts/follow-up.md)  
+Prompt packs: [`prompts/lead-concierge.md`](prompts/lead-concierge.md) · [`prompts/scheduler.md`](prompts/scheduler.md) · [`prompts/follow-up.md`](prompts/follow-up.md) · [`prompts/scout.md`](prompts/scout.md) · [`prompts/researcher.md`](prompts/researcher.md) · [`prompts/coordinator.md`](prompts/coordinator.md) · [`prompts/compliance-guard.md`](prompts/compliance-guard.md)  
 Workflows: [`WORKFLOWS.md`](WORKFLOWS.md)
 
 ---
@@ -25,7 +25,7 @@ From this repo:
 npm run seed:fields
 ```
 
-Verify in GHL: **Settings → Custom Fields** (contact). You should see Intent, Buyer/Seller/Investor Profile, and AI fields.
+Verify in GHL: **Settings → Custom Fields** (contact). You should see Intent, Buyer/Seller/Investor Profile, **Contact Preferences** (Preferred Channel / Language), and AI fields.
 
 Organize into folders in the UI if they appear ungrouped.
 
@@ -41,6 +41,12 @@ Organize into folders in the UI if they appear ungrouped.
 | `temp_warm` | Weekly nurture |
 | `temp_cold` | Monthly nurture |
 | `ai_handoff` | Human takeover |
+| `ai_qualifying` | Intake queued; starts Researcher |
+| `researcher_done` | Researcher finished |
+| `needs_contact_info` | Missing phone and email |
+| `opted_out` | Compliance Guard — lead asked to stop |
+| `compliance_hold` | Compliance Guard — bots must stay off |
+| `dnd` | Optional — also starts Compliance Guard |
 | `lead_buyer` | Optional mirror of Lead Type |
 | `lead_seller` | Optional |
 | `lead_investor` | Optional |
@@ -109,7 +115,36 @@ Scout is a **scheduled workflow**, not a chat bot. See [`prompts/scout.md`](prom
 
 1. Create tags `scout_priority` (and optional `scout_reviewed`).
 2. Build **`REOS Scout — Daily Priority`** — MVP: daily find Hot/Qualified without `appt_booked` → tag `scout_priority` + `ready_to_book` → notify agent ([`WORKFLOWS.md`](WORKFLOWS.md) Workflow J).
-3. New leads stay on **REOS Intake** (Scout’s “new lead” job).
+3. New leads stay on **REOS Intake** → **Researcher** (Scout’s “new lead” job is Intake + Researcher).
+
+### 5e. Researcher (Phase 1 — The Researcher)
+
+Researcher is a **workflow** (optional chat bot later). See [`prompts/researcher.md`](prompts/researcher.md).
+
+1. Seed fields → Preferred Channel, Preferred Language (`npm run seed:fields`).
+2. Create tags `researcher_done`, `needs_contact_info`.
+3. **Edit REOS Intake:** keep opp + `ai_qualifying`; **remove** Concierge Active.
+4. Build **`REOS Researcher`**: trigger `ai_qualifying` → tags `channel_sms`/`channel_email` + `lang_en` + `researcher_done` ([`WORKFLOWS.md`](WORKFLOWS.md) Workflow K).  
+   Prefer **not** starting Concierge here — Coordinator does.  
+   (Do not use Update Contact Field for Preferred Channel — GHL often hides it in the workflow list.)
+
+### 5f. Coordinator (Phase 1 — The Coordinator)
+
+Coordinator is a **workflow** (traffic controller). See [`prompts/coordinator.md`](prompts/coordinator.md).
+
+1. Create tags `coordinated`, `coord_email_only`.
+2. **Edit REOS Researcher:** remove Concierge Active if present; end on `researcher_done`.
+3. Build **`REOS Coordinator`**: triggers on `researcher_done`, `ready_to_book`, `temp_warm`/`temp_cold`, `ai_handoff`, `scout_priority` → assign user → exclusive bot route ([`WORKFLOWS.md`](WORKFLOWS.md) Workflow L).
+4. Keep Start Scheduler / Start Follow-Up for now (idempotent) or pause them once Coordinator is proven.
+
+### 5g. Compliance Guard (Phase 1 — The Compliance Guard)
+
+Compliance Guard is a **workflow** (opt-out kill-switch). See [`prompts/compliance-guard.md`](prompts/compliance-guard.md).
+
+1. Create tags `opted_out`, `compliance_hold` (and `dnd` if you use it).
+2. Build **`REOS Compliance Guard`**: trigger on those tags → all bots Inactive → tag hold → remove `ready_to_book` → notify ([`WORKFLOWS.md`](WORKFLOWS.md) Workflow M).
+3. **Edit REOS Coordinator:** after Assign, before `ai_handoff`, If/Else tags include `compliance_hold` OR `opted_out` → bots Inactive → `coordinated` → End.
+4. Paste **COMPLIANCE** blocks into Concierge / Scheduler / Follow-Up Additional Information.
 
 ---
 
@@ -124,16 +159,38 @@ Keep them linear. Let the bot handle conversational branching.
 **Triggers (any):**
 - Form Submitted  
 - FB Lead Form  
-- Contact Created (optional filter: has phone)  
+- Contact Created (optional)  
 - Inbound SMS (if you want every new text conversation to qualify)
 
 **Actions:**
-1. Create/Update Opportunity → Pipeline `REOS Leads`, Stage `New`
+1. Create/Update Opportunity → Pipeline `New Leads` (or yours), Stage `New`
 2. Update Opportunity Stage → `AI Qualifying`
-3. Add tag `ai_qualifying` (optional)
-4. **Start Conversation AI** / Send to Concierge bot  
-   - Or: SMS first message + enable bot on contact  
-5. (Optional) Assign to user / round-robin
+3. Add tag `ai_qualifying` (**required** — starts Researcher)
+4. (Optional) Assign to user / round-robin  
+**Do not** start Concierge here.
+
+### Workflow 1b — `REOS Researcher`
+
+**Trigger:** Tag `ai_qualifying` added  
+
+**Actions:**
+1. If no phone AND no email → tag `needs_contact_info` → notify → end  
+2. Else tag `channel_sms` (phone) or `channel_email`  
+3. Preferred Language = English (or tag `lang_en`)  
+4. Tag `researcher_done`  
+5. Do **not** start Concierge (Coordinator does)
+
+### Workflow 1c — `REOS Coordinator`
+
+**Triggers:** `researcher_done`, `ready_to_book`, `temp_warm`, `temp_cold`, `ai_handoff`, `scout_priority`  
+
+**Actions:** Assign if needed → if `compliance_hold`/`opted_out` keep bots off → else route (handoff → booked → email-only → Scheduler → Follow-Up → Concierge) → tag `coordinated`
+
+### Workflow 1d — `REOS Compliance Guard`
+
+**Triggers:** `opted_out`, `compliance_hold`, optional `dnd`  
+
+**Actions:** Assign if needed → all three bots Inactive → tag `opted_out` + `compliance_hold` → remove `ready_to_book` → Internal Notification `REOS: Compliance hold` → no SMS
 
 ### Workflow 2 — `REOS Post-Qualify`
 

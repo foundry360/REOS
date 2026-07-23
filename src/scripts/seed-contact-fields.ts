@@ -144,6 +144,23 @@ const FIELD_GROUPS: Array<{
     ],
   },
   {
+    folder: "Contact Preferences",
+    fields: [
+      {
+        name: "Preferred Channel",
+        dataType: "SINGLE_OPTIONS",
+        options: ["SMS", "Email", "Facebook", "Instagram", "Call"],
+        placeholder: "Best channel to reach them",
+      },
+      {
+        name: "Preferred Language",
+        dataType: "SINGLE_OPTIONS",
+        options: ["English", "Spanish"],
+        placeholder: "Preferred language",
+      },
+    ],
+  },
+  {
     folder: "AI",
     fields: [
       {

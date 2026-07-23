@@ -6,14 +6,17 @@ Build these in GHL **Automation → Workflows** before finishing Bot Appointment
 
 1. Tags + Pipeline + Calendar (prereqs)  
 2. `REOS Appointment Booked`  
-3. `REOS Intake`  
-4. `REOS Hot` / `Warm` / `Cold` / `Handoff`  
-5. **`REOS Start Scheduler`** (Phase 1 — The Scheduler)  
-6. **`REOS Start Follow-Up`** (Phase 1 — The Follow-Up)  
-7. **`REOS Scout — Daily Priority`** (Phase 1 — The Scout)  
-8. `REOS Post-Qualify` (optional — skip)
+3. `REOS Intake` (opp + `ai_qualifying` — **does not** start Concierge)  
+4. **`REOS Researcher`** (Phase 1 — channel tags + `researcher_done`)  
+5. **`REOS Coordinator`** (Phase 1 — assign + exclusive bot route)  
+6. **`REOS Compliance Guard`** (Phase 1 — opt-out kill-switch)  
+7. `REOS Hot` / `Warm` / `Cold` / `Handoff`  
+8. **`REOS Start Scheduler`** (optional if Coordinator owns Scheduler route)  
+9. **`REOS Start Follow-Up`** (optional if Coordinator owns Follow-Up route)  
+10. **`REOS Scout — Daily Priority`** (Phase 1 — The Scout)  
+11. `REOS Post-Qualify` (optional — skip)
 
-Prompt packs: [`prompts/lead-concierge.md`](prompts/lead-concierge.md) · [`prompts/scheduler.md`](prompts/scheduler.md) · [`prompts/follow-up.md`](prompts/follow-up.md) · [`prompts/scout.md`](prompts/scout.md)  
+Prompt packs: [`prompts/lead-concierge.md`](prompts/lead-concierge.md) · [`prompts/scheduler.md`](prompts/scheduler.md) · [`prompts/follow-up.md`](prompts/follow-up.md) · [`prompts/scout.md`](prompts/scout.md) · [`prompts/researcher.md`](prompts/researcher.md) · [`prompts/coordinator.md`](prompts/coordinator.md) · [`prompts/compliance-guard.md`](prompts/compliance-guard.md)  
 Full setup: [`GHL_SETUP.md`](GHL_SETUP.md)
 
 ---
@@ -33,6 +36,15 @@ Full setup: [`GHL_SETUP.md`](GHL_SETUP.md)
 | `appt_booked` | Yes — set by Appointment Booked workflow |
 | `scout_priority` | Yes — Scout Daily P1 |
 | `scout_reviewed` | Optional — Daily Scout touched today |
+| `researcher_done` | Yes — Researcher finished; Concierge may run |
+| `needs_contact_info` | Yes — missing phone and email |
+| `channel_sms` / `channel_email` | Yes — Researcher channel (workflow picker often misses Preferred Channel field) |
+| `lang_en` / `lang_es` | Yes — language; start with `lang_en` |
+| `coordinated` | Yes — Coordinator finished a route pass |
+| `coord_email_only` | Yes — email-only; bots off, human emails |
+| `opted_out` | Yes — Compliance Guard; lead asked to stop |
+| `compliance_hold` | Yes — bots must stay off; Coordinator respects this |
+| `dnd` | Optional — alias that also starts Compliance Guard |
 | `lead_buyer` / `lead_seller` / `lead_investor` | Optional |
 
 ### Pipeline — Opportunities → Pipelines
@@ -98,7 +110,7 @@ Use **Option 1** unless you’re sure the bot enrollment path is available.
 
 ## Workflow B — `REOS Intake`
 
-Starts the Concierge when a lead arrives.
+Creates the opportunity and queues research. **Does not** start Concierge — **REOS Researcher** tags channel, then **REOS Coordinator** starts Concierge.
 
 ### Triggers (add all you use)
 
@@ -106,7 +118,7 @@ Starts the Concierge when a lead arrives.
 |---|---|
 | Form Submitted | Select your lead forms / landing pages |
 | Facebook Lead Form | If using FB leads |
-| Contact Created | Optional filter: Phone is not empty |
+| Contact Created | Optional |
 | Customer Replied / Inbound Message | Optional — only if you want every SMS to start AI |
 
 If “Contact Created” double-fires with Form Submitted, use **only Form Submitted + FB** for MVP.
@@ -115,19 +127,186 @@ If “Contact Created” double-fires with Form Submitted, use **only Form Submi
 
 | # | Action | Config |
 |---|---|---|
-| 1 | Create/Update Opportunity | Pipeline **REOS Leads**, Stage **New**, value optional |
+| 1 | Create/Update Opportunity | Pipeline **New Leads** (or your pipeline), Stage **New** |
 | 2 | Update Opportunity Stage | **AI Qualifying** |
-| 3 | Add Contact Tag | `ai_qualifying` (optional) |
+| 3 | Add Contact Tag | `ai_qualifying` (**required** — starts Researcher) |
 | 4 | Assign to User | Round-robin or specific agent (optional) |
-| 5 | Conversation AI / Enable Bot | Select **REOS Lead Concierge** bot, channel **SMS** |
-| 6 | Send SMS (only if bot does not auto-open) | Short opener is optional — usually let the bot speak first |
 
-GHL label for step 5 varies: **Enable Conversation AI**, **Assign Conversation AI Bot**, **AI Bot**, etc. Pick the action that attaches your Concierge bot to the contact.
+**Remove** any “Update Conversation AI → Concierge Active” step from Intake if you already built it — **REOS Coordinator** starts Concierge after `researcher_done`.
 
-### Filters / allowlists
+Skip if tag `ai_handoff` already exists.
 
-- Require **Phone** present before enabling bot  
-- Skip if tag `ai_handoff` already exists  
+**Publish.**
+
+---
+
+## Workflow K — `REOS Researcher` (Phase 1 — The Researcher)
+
+Confirms contact details, Preferred Channel, and Preferred Language — then starts Concierge.
+
+Prompt: [`prompts/researcher.md`](prompts/researcher.md)
+
+### Trigger
+
+| Setting | Value |
+|---|---|
+| Trigger | **Contact Tag** |
+| Tag | `ai_qualifying` added |
+
+### Actions (MVP — workflow only, no Researcher chat bot)
+
+**Note:** Preferred Channel / Preferred Language often appear on the contact but **not** in Workflow → Update Contact Field. Use tags below.
+
+| # | Action | Config |
+|---|---|---|
+| 1 | If/Else | Phone empty **AND** Email empty? |
+| 1a | Yes → Add Tag | `needs_contact_info` |
+| 1b | Yes → Internal Notification | Assigned user: “Lead missing phone & email — cannot start Concierge” |
+| 1c | Yes → **End** (do not start Concierge) |
+| 2 | No (has phone or email) → If/Else | Phone present? |
+| 2a | Yes → Add Tag | `channel_sms` |
+| 2b | No → Add Tag | `channel_email` |
+| 3 | Add Tag | `lang_en` |
+| 4 | Add Tag | `researcher_done` |
+| 5 | Remove Tag | `needs_contact_info` (if present) |
+| 6 | Update Conversation AI | **Skip if using Coordinator** — else Concierge Active · Scheduler Inactive · Follow-Up Inactive |
+
+**Preferred with Coordinator:** Researcher ends at step 5 (`researcher_done`). **REOS Coordinator** starts Concierge.
+
+**Optional later:** Researcher Conversation AI bot when SMS is live and you want to *ask* for missing phone/language instead of ending.
+
+### If you already start Concierge from Intake
+
+1. Open **REOS Intake** → delete Concierge Active step  
+2. Publish Intake  
+3. Publish **REOS Researcher** as above  
+
+**Manual test:** Contact with phone → add `ai_qualifying` → `channel_sms` + `researcher_done`. Contact with neither phone nor email → `needs_contact_info`.
+
+**Publish.**
+
+---
+
+## Workflow L — `REOS Coordinator` (Phase 1 — The Coordinator)
+
+Assigns the human owner and turns on **exactly one** specialist bot (or none). Respects channel tags from Researcher.
+
+Prompt: [`prompts/coordinator.md`](prompts/coordinator.md)
+
+### Triggers (add all)
+
+| Trigger | Tag |
+|---|---|
+| Contact Tag | `researcher_done` added |
+| Contact Tag | `ready_to_book` added |
+| Contact Tag | `temp_warm` added |
+| Contact Tag | `temp_cold` added |
+| Contact Tag | `ai_handoff` added |
+| Contact Tag | `scout_priority` added |
+
+### Actions (in order)
+
+**A — Always first**
+
+1. **If/Else** — has assigned user?  
+   - No → **Assign to User**  
+   - Yes → continue  
+
+**A2 — Compliance block (before any bot activation)**
+
+2. **If/Else** — tags include `compliance_hold` **OR** `opted_out`?  
+   - **Yes** → Concierge / Scheduler / Follow-Up all **Inactive** → Add Tag `coordinated` → **End**  
+   - **None** → continue  
+
+**B — Route (nested If/Else, first match wins)**
+
+3. **If/Else** — has tag `ai_handoff`?  
+   - **Yes** → Concierge / Scheduler / Follow-Up all **Inactive** → Internal Notification “Human handoff” → Add Tag `coordinated` → **End**  
+   - **No** → continue  
+
+4. **If/Else** — has tag `appt_booked`?  
+   - **Yes** → all three bots **Inactive** → Add Tag `coordinated` → **End**  
+   - **No** → continue  
+
+5. **If/Else** — has tag `channel_email` **AND** Phone empty?  
+   - **Yes** → Add Tag `coord_email_only` → all three bots **Inactive** → Internal Notification: “Email-only lead — reach out by email” → Add Tag `coordinated` → **End**  
+   - **No** → continue  
+
+6. **If/Else** — has tag `ready_to_book`?  
+   - **Yes** → Scheduler **Active** · Concierge **Inactive** · Follow-Up **Inactive** → Add Tag `coordinated` → **End**  
+   - **No** → continue  
+
+7. **If/Else** — has tag `temp_warm` **OR** `temp_cold`?  
+   - **Yes** → Follow-Up **Active** · Concierge **Inactive** · Scheduler **Inactive** → Add Tag `coordinated` → **End**  
+   - **No** → continue  
+
+8. **Else** (usually `researcher_done`) → Concierge **Active** · Scheduler **Inactive** · Follow-Up **Inactive** → Add Tag `coordinated`
+
+**C — Scout ping (optional branch before End on any path that continues)**
+
+If trigger was `scout_priority` and you did not already notify: **Internal Notification** → “Scout priority: {{contact.first_name}}”
+
+### Clean handoff from Researcher
+
+1. Open **REOS Researcher** → remove Concierge Active (if present)  
+2. Researcher should end on `researcher_done`  
+3. Publish both Researcher + Coordinator  
+
+`REOS Start Scheduler` / `REOS Start Follow-Up` may stay published (same bot toggles) or be paused later once Coordinator is trusted.
+
+**Manual test**
+
+| Setup | Add tag | Expect |
+|---|---|---|
+| Phone + `channel_sms` | `researcher_done` | Concierge Active, `coordinated` |
+| Phone | `ready_to_book` | Scheduler Active |
+| Phone | `temp_warm` | Follow-Up Active |
+| Email only, no phone, `channel_email` | `researcher_done` | `coord_email_only`, bots Inactive, notify |
+| Any | `ai_handoff` | All bots Inactive |
+
+**Publish.**
+
+---
+
+## Workflow M — `REOS Compliance Guard` (Phase 1 — The Compliance Guard)
+
+Opt-out kill-switch: stop all specialist bots and hold Coordinator from reactivating them.
+
+Prompt: [`prompts/compliance-guard.md`](prompts/compliance-guard.md)
+
+### Triggers
+
+Use **separate** Contact Tag triggers (one tag each). Multi-tag on one trigger often does not fire in GHL:
+
+| Trigger | Tag added |
+|---|---|
+| Contact Tag | `opted_out` |
+| Contact Tag | `compliance_hold` |
+| Contact Tag | `dnd` (optional) |
+
+Optional later: Customer reply contains STOP / UNSUBSCRIBE / CANCEL → Add Tag `opted_out`.
+
+### Actions (in order)
+
+| # | Action | Config |
+|---|---|---|
+| 1 | If/Else | Has assigned user? No → Assign to User · Yes → continue |
+| 2 | Update Conversation AI | REOS Lead Concierge → **Inactive** |
+| 3 | Update Conversation AI | REOS Scheduler → **Inactive** |
+| 4 | Update Conversation AI | REOS Follow-Up → **Inactive** |
+| 5 | Add Tag | `opted_out` |
+| 6 | Add Tag | `compliance_hold` |
+| 7 | Remove Tag | `ready_to_book` |
+| 8 | Remove Tag | `ai_qualifying` (optional) |
+| 9 | Internal Notification | Assigned User — subject `REOS: Compliance hold` |
+
+**Do not** Send SMS from this workflow. Use native **Update Conversation AI** (not GPT / premium AI actions).
+
+### Coordinator edit (required)
+
+After Assign, before `ai_handoff`, add If/Else: tags include `compliance_hold` OR `opted_out` → all bots Inactive → `coordinated` → End. See Workflow L step **A2**.
+
+**Manual test:** Concierge Active contact → add `opted_out` → all bots Inactive + `compliance_hold`. Then add `researcher_done` → Coordinator keeps bots Inactive.
 
 **Publish.**
 
@@ -509,12 +688,19 @@ Only needed if you want a single place that reacts to temperature before Hot/War
 - [ ] Pipeline **New Leads** stages live  
 - [ ] Calendar Buyer/Seller Consult has slots  
 - [ ] `REOS Appointment Booked` published  
-- [ ] `REOS Intake` published + form attached  
+- [ ] `REOS Intake` published + form attached (**no** Concierge Active)  
+- [ ] **`REOS Researcher`** published (`ai_qualifying` → channel tags → `researcher_done`)  
+- [ ] **`REOS Coordinator`** published (assign + compliance block + exclusive bot route)  
+- [ ] **`REOS Compliance Guard`** published (`opted_out` / `compliance_hold` → bots Inactive)  
+- [ ] Tags `researcher_done`, `needs_contact_info`, `coordinated`, `coord_email_only`, `opted_out`, `compliance_hold`  
+- [ ] Preferred Channel / Preferred Language fields seeded (CRM display)  
+- [ ] Researcher no longer starts Concierge (Coordinator does)  
 - [ ] `REOS Hot` / Warm / Cold / Handoff published  
-- [ ] **REOS Scheduler** bot + `REOS Start Scheduler` published  
-- [ ] **REOS Follow-Up** bot + `REOS Start Follow-Up` published  
+- [ ] **REOS Scheduler** bot + Start Scheduler (optional if Coordinator covers it)  
+- [ ] **REOS Follow-Up** bot + Start Follow-Up (optional if Coordinator covers it)  
 - [ ] **REOS Scout — Daily Priority** published (MVP P1 booking catch)  
 - [ ] Concierge Appointment Booking disabled; Hot adds `ready_to_book`  
+- [ ] Compliance COMPLIANCE blocks pasted into Concierge / Scheduler / Follow-Up  
 - [ ] SMS/live test when connected ([`TESTING.md`](TESTING.md))
 
 ---
