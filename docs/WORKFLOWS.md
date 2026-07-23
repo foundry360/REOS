@@ -10,9 +10,10 @@ Build these in GHL **Automation → Workflows** before finishing Bot Appointment
 4. `REOS Hot` / `Warm` / `Cold` / `Handoff`  
 5. **`REOS Start Scheduler`** (Phase 1 — The Scheduler)  
 6. **`REOS Start Follow-Up`** (Phase 1 — The Follow-Up)  
-7. `REOS Post-Qualify` (optional — skip)
+7. **`REOS Scout — Daily Priority`** (Phase 1 — The Scout)  
+8. `REOS Post-Qualify` (optional — skip)
 
-Prompt packs: [`prompts/lead-concierge.md`](prompts/lead-concierge.md) · [`prompts/scheduler.md`](prompts/scheduler.md) · [`prompts/follow-up.md`](prompts/follow-up.md)  
+Prompt packs: [`prompts/lead-concierge.md`](prompts/lead-concierge.md) · [`prompts/scheduler.md`](prompts/scheduler.md) · [`prompts/follow-up.md`](prompts/follow-up.md) · [`prompts/scout.md`](prompts/scout.md)  
 Full setup: [`GHL_SETUP.md`](GHL_SETUP.md)
 
 ---
@@ -30,6 +31,8 @@ Full setup: [`GHL_SETUP.md`](GHL_SETUP.md)
 | `ai_qualifying` | Optional |
 | `ready_to_book` | Yes — Concierge → Scheduler handoff |
 | `appt_booked` | Yes — set by Appointment Booked workflow |
+| `scout_priority` | Yes — Scout Daily P1 |
+| `scout_reviewed` | Optional — Daily Scout touched today |
 | `lead_buyer` / `lead_seller` / `lead_investor` | Optional |
 
 ### Pipeline — Opportunities → Pipelines
@@ -386,6 +389,93 @@ appt_booked → stop Follow-Up / Scheduler booking path done
 
 ---
 
+## Workflow J — `REOS Scout — Daily Priority` (Phase 1 — The Scout)
+
+Scout is **not** a chat bot. This scheduled workflow finds who to work first and routes them.
+
+Design notes: [`prompts/scout.md`](prompts/scout.md)
+
+### Prereqs
+
+- Tags: `scout_priority`, `appt_booked`, `ready_to_book`, `temp_hot`, `temp_warm`, `temp_cold`, `ai_handoff`
+- Pipeline **New Leads**
+- Concierge / Scheduler / Follow-Up start workflows already published
+
+### Trigger
+
+| Setting | Value |
+|---|---|
+| Trigger | **Appointment / Schedule** (or **Time based** / **Recurring**) |
+| Cadence | **Daily** — e.g. 8:00 AM account timezone |
+
+If your GHL only supports “Workflow runs on contacts in a smart list,” use:
+
+| Setting | Value |
+|---|---|
+| Trigger | Contact in **Smart List**: Scout Candidates |
+| Smart List filters | Opportunity pipeline = New Leads · Stage is not Closed Won/Lost · Tag does not include `appt_booked` · Tag does not include `ai_handoff` |
+
+Run that list on a schedule (or use “Customer in Workflow” enrollment from a nightly campaign).
+
+### Actions (per contact)
+
+```text
+1. If/Else — SKIP?
+   ├─ appt_booked OR ai_handoff OR DND → END
+   └─ else → continue
+
+2. If/Else — P1 Scheduler path?
+   ├─ ready_to_book OR (temp_hot AND NOT appt_booked)
+   │    → Add tag scout_priority
+   │    → If ready_to_book missing → Add tag ready_to_book
+   │    → Internal Notification to Assigned User: “P1 — needs booking”
+   │    → (Start Scheduler already fires on ready_to_book)
+   │    → END
+   └─ else → continue
+
+3. If/Else — P2 Follow-Up path?
+   ├─ temp_warm OR temp_cold
+   │    → Add tag scout_reviewed (optional)
+   │    → Ensure Follow-Up path: add/re-add temp_warm or leave tag
+   │      (or Update Conversation AI → Follow-Up Active if silent too long)
+   │    → END
+   └─ else → continue
+
+4. Else — P1 Concierge (unqualified / stuck in New or AI Qualifying)
+   → Add tag scout_priority
+   → Update Conversation AI → Concierge Active
+   → Scheduler Inactive · Follow-Up Inactive
+   → Internal Notification: “P1 — needs qualification”
+   → END
+```
+
+### Simpler MVP (recommended first)
+
+Build only **P1 booking catch**:
+
+**Trigger:** Daily smart list / schedule  
+
+**Filters on enrollment or first If/Else:**
+- Has `temp_hot` OR stage = Qualified  
+- Does **not** have `appt_booked`  
+- Does **not** have `ready_to_book` (optional — if missing, add it)
+
+**Actions:**
+1. Add tag `scout_priority`  
+2. Add tag `ready_to_book` (starts Scheduler)  
+3. Internal Notification to assigned user  
+4. If no assigned user → Assign to User first  
+
+That alone makes Scout useful: every morning, Hot/Qualified leads without a book get pushed to Scheduler.
+
+### Manual test
+
+1. Contact: `temp_hot`, no `appt_booked`, no `ready_to_book`, has assigned user  
+2. Manually enroll in **REOS Scout — Daily Priority** (or run test)  
+3. Expect: `scout_priority` + `ready_to_book` → Start Scheduler fires → notify agent  
+
+---
+
 ## Workflow G — `REOS Post-Qualify` (optional)
 
 Only needed if you want a single place that reacts to temperature before Hot/Warm/Cold workflows.
@@ -423,6 +513,7 @@ Only needed if you want a single place that reacts to temperature before Hot/War
 - [ ] `REOS Hot` / Warm / Cold / Handoff published  
 - [ ] **REOS Scheduler** bot + `REOS Start Scheduler` published  
 - [ ] **REOS Follow-Up** bot + `REOS Start Follow-Up` published  
+- [ ] **REOS Scout — Daily Priority** published (MVP P1 booking catch)  
 - [ ] Concierge Appointment Booking disabled; Hot adds `ready_to_book`  
 - [ ] SMS/live test when connected ([`TESTING.md`](TESTING.md))
 

@@ -103,6 +103,14 @@ Stages (in order):
 4. Build **`REOS Start Follow-Up`**: triggers `temp_warm` / `temp_cold` → Follow-Up Active; Concierge + Scheduler Inactive — see [`WORKFLOWS.md`](WORKFLOWS.md) Workflow I.
 5. Keep Warm/Cold drip workflows for email cadence; Follow-Up owns conversational check-ins.
 
+### 5d. Scout (Phase 1 — The Scout)
+
+Scout is a **scheduled workflow**, not a chat bot. See [`prompts/scout.md`](prompts/scout.md).
+
+1. Create tags `scout_priority` (and optional `scout_reviewed`).
+2. Build **`REOS Scout — Daily Priority`** — MVP: daily find Hot/Qualified without `appt_booked` → tag `scout_priority` + `ready_to_book` → notify agent ([`WORKFLOWS.md`](WORKFLOWS.md) Workflow J).
+3. New leads stay on **REOS Intake** (Scout’s “new lead” job).
+
 ---
 
 ## 6. Workflows
