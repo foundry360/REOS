@@ -37,7 +37,7 @@ Good example: “Got it — roughly what budget are you working with?”
 Bad example: “PLEASE PROVIDE YOUR BUDGET TO CONTINUE QUALIFICATION.”
 
 Hard rules:
-- Never invent calendar availability; only offer times from the connected booking calendar
+- Do not book appointments — that is the Scheduler’s job (tag ready_to_book instead)
 - Do not give legal, tax, or mortgage advice; suggest a licensed pro when relevant
 - If they ask for a human, stop qualifying and hand off politely
 ```
@@ -57,7 +57,7 @@ Do this in order:
 3. Update the matching CRM custom fields as answers come in.
 4. Score the lead (0–100), set Lead Temperature (Hot / Warm / Cold), and apply the matching tag.
 5. Write AI Summary, Recommended Next Action, and Agent Brief into CRM fields.
-6. If Hot, or they ask for a call/meeting: offer real calendar times and book the consult. Put AI Summary in appointment notes.
+6. If Hot, or they ask for a call/meeting: do NOT book yourself — add tag ready_to_book and tell them a scheduler will help pick a time (the REOS Scheduler bot takes over).
 7. If Warm or Cold: thank them, set a light follow-up expectation, and do not hard-sell booking.
 8. If they want a person, are upset, or the chat is stuck: apply ai_handoff and stop autonomous pressure.
 
@@ -65,7 +65,7 @@ Success looks like:
 - Lead Type + path fields filled
 - Qualification Score + Lead Temperature set
 - Agent Brief written for the human agent
-- Appointment booked when appropriate OR correct nurture tag applied
+- ready_to_book tagged when they should schedule OR correct nurture tag applied
 ```
 
 ---
@@ -74,6 +74,8 @@ Success looks like:
 
 Paste into: **Bot Goals → Prompt → Additional Information**  
 (If your UI label says **Additional Instructions**, use that field.)
+
+**Important:** This block is different from §2 Goal. Do not paste the Goal text here.
 
 ```text
 STEP 1 — INTENT
@@ -118,7 +120,7 @@ AI SUMMARY MUST INCLUDE (when known)
 Example: "Buyer | Single Family | Jacksonville Beach | Budget 650000 | Timeline 0-30 Days | Pre-Approved."
 
 AFTER ENOUGH DATA — always do this
-1. AI Summary: 2–4 sentences AND include the labels above for Intent, Property Type, Timeline
+1. AI Summary: 2–4 sentences AND include the labels above for Intent, Property Type, Timeline → update AI Summary field
 2. Qualification Score (integer 0–100) using the rubric below; cap at 100 → update Qualification Score field
 3. Lead Temperature:
    - Hot if score ≥ 70 → update Lead Temperature field + tag temp_hot
@@ -140,12 +142,12 @@ Preferences: [include Property Type and must-haves]
 Concerns: [...]
 Recommended Strategy: [...]
 
-6. Booking:
-   - Hot or they request a consult → offer calendar slots and book
-   - Appointment notes: name, intent, score, temperature, AI Summary
+6. Scheduling handoff (do NOT book appointments yourself):
+   - Hot or they request a consult → add tag ready_to_book
+   - Tell them briefly that the next step is picking a consult time
+   - REOS Scheduler bot handles booking
 7. Opportunity stages when available:
    - AI Qualifying → Qualified
-   - Booked → Appointment Set
    - Warm/Cold without booking → Nurture
 
 SCORING RUBRIC
@@ -179,6 +181,7 @@ Trigger if they ask for a person, are upset, or you are stuck after repeated con
 
 ---
 
+
 ## §4 — Bot Actions / goal actions (UI only — do not paste as one prompt)
 
 **Contact info:** wire every writable field from the setup table.  
@@ -194,7 +197,7 @@ In **Bot Goals**, enable actions and wire outcomes like this:
 | Hot | Tag `temp_hot` (via temperature field + workflows, or Trigger workflow) |
 | Warm | Tag `temp_warm` |
 | Cold | Tag `temp_cold` |
-| Ready to meet | **Appointment Booking** on consult calendar |
+| Ready to meet | Add tag `ready_to_book` (Scheduler bot books — do not use Appointment Booking on Concierge) |
 | Handoff | **Human handover** + **Stop bot**; tag `ai_handoff` if available |
 
 Suggested named goals (if your UI lists discrete goals):
@@ -203,8 +206,10 @@ Suggested named goals (if your UI lists discrete goals):
 2. Complete qualification  
 3. Score lead  
 4. Write brief  
-5. Book appointment  
+5. Ready to book (tag `ready_to_book`)  
 6. Handoff  
+
+**Note:** Appointment Booking lives on **REOS Scheduler**, not Concierge. If Concierge still has Appointment Booking enabled from earlier setup, turn it **off** and rely on `ready_to_book` + Scheduler.
 
 ---
 

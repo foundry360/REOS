@@ -1,6 +1,6 @@
 # REOS — Real Estate Operating System (GoHighLevel)
 
-GHL-native **AI Lead Concierge**: qualify inbound leads, update CRM fields, score temperature, book appointments, write an agent brief, and start Hot/Warm/Cold nurture — using Conversation AI and Workflows inside GoHighLevel.
+GHL-native **Phase 1 AI team** (Concierge + Scheduler + Follow-Up): qualify inbound leads, book consults, nurture Warm/Cold until ready — using Conversation AI and Workflows inside GoHighLevel.
 
 This repo seeds CRM fields and ships copy-paste setup docs. There is **no** external AI orchestration server for the MVP.
 
@@ -27,7 +27,11 @@ Follow **[`docs/GHL_SETUP.md`](docs/GHL_SETUP.md)** for pipeline, tags, calendar
 
 Build automations from **[`docs/WORKFLOWS.md`](docs/WORKFLOWS.md)** (Intake, Appointment Booked, Hot, Warm, Cold, Handoff).
 
-Paste bot instructions from **[`docs/prompts/lead-concierge.md`](docs/prompts/lead-concierge.md)**.
+Paste bot instructions from:
+
+- **[`docs/prompts/lead-concierge.md`](docs/prompts/lead-concierge.md)** — qualify  
+- **[`docs/prompts/scheduler.md`](docs/prompts/scheduler.md)** — book  
+- **[`docs/prompts/follow-up.md`](docs/prompts/follow-up.md)** — nurture
 
 ### 4. Test
 

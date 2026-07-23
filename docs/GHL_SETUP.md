@@ -2,9 +2,10 @@
 
 Simple native workflow. No external AI server.
 
-**Flow:** Lead arrives → Conversation AI qualifies → CRM fields update → score/temperature/brief → book if ready → Hot/Warm/Cold nurture.
+**Flow:** Lead arrives → **Concierge** qualifies → Hot/`ready_to_book` → **Scheduler** books · Warm/Cold → **Follow-Up** nurtures → back to Scheduler when ready.
 
-Prompt pack: [`docs/prompts/lead-concierge.md`](prompts/lead-concierge.md)
+Prompt packs: [`prompts/lead-concierge.md`](prompts/lead-concierge.md) · [`prompts/scheduler.md`](prompts/scheduler.md) · [`prompts/follow-up.md`](prompts/follow-up.md)  
+Workflows: [`WORKFLOWS.md`](WORKFLOWS.md)
 
 ---
 
@@ -80,12 +81,27 @@ Stages (in order):
    - §1 → **Personality**
    - §2 → **Goal or Intent**
    - §3 → **Additional Information** (or Additional Instructions)
-5. Configure **Bot Actions** from §4 of that doc (update fields, tags, booking, handoff).
+5. Configure **Bot Actions** from §4 (Contact info, handoff, stop bot — **not** Appointment Booking).
 6. Enable channels: **SMS** first; add FB/IG when ready.
-7. Enable **appointment booking** on the consult calendar.
-8. **Bot Training** is optional Knowledge Base only (§5) — skip for launch.
+7. **Bot Training** optional — skip for launch.
 
-If your account uses **Workflow → Appointment Booking Conversation AI** instead of bot-native booking, use that action inside the Intake workflow after the bot starts (see Workflow 1).
+### 5b. Scheduler bot (Phase 1 — The Scheduler)
+
+1. Create bot: **`REOS Scheduler`**.
+2. Paste [`prompts/scheduler.md`](prompts/scheduler.md) §1–§3 into Bot Goals.
+3. Enable **Appointment Booking** on Buyer/Seller Consult (disable after book **On**).
+4. Enable Human handover + Stop bot.
+5. Build workflow **`REOS Start Scheduler`** (tag `ready_to_book` → activate Scheduler) — see [`WORKFLOWS.md`](WORKFLOWS.md) Workflow H.
+6. On **REOS Hot**, add tag **`ready_to_book`** so Hot leads always reach Scheduler.
+7. Turn **Off** Appointment Booking on the Concierge bot if it was enabled earlier.
+
+### 5c. Follow-Up bot (Phase 1 — The Follow-Up)
+
+1. Create bot: **`REOS Follow-Up`**.
+2. Paste [`prompts/follow-up.md`](prompts/follow-up.md) §1–§3 into Bot Goals.
+3. Actions: Contact info (light), Human handover, Stop bot — **no** Appointment Booking.
+4. Build **`REOS Start Follow-Up`**: triggers `temp_warm` / `temp_cold` → Follow-Up Active; Concierge + Scheduler Inactive — see [`WORKFLOWS.md`](WORKFLOWS.md) Workflow I.
+5. Keep Warm/Cold drip workflows for email cadence; Follow-Up owns conversational check-ins.
 
 ---
 

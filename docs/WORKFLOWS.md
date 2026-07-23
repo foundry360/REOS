@@ -5,15 +5,14 @@ Build these in GHL **Automation → Workflows** before finishing Bot Appointment
 **Build order**
 
 1. Tags + Pipeline + Calendar (prereqs)  
-2. `REOS Appointment Booked` (small helper — used by bot booking action)  
+2. `REOS Appointment Booked`  
 3. `REOS Intake`  
-4. `REOS Hot`  
-5. `REOS Warm Nurture`  
-6. `REOS Cold Nurture`  
-7. `REOS Handoff` (optional)  
-8. `REOS Post-Qualify` (optional if tags already drive Hot/Warm/Cold)
+4. `REOS Hot` / `Warm` / `Cold` / `Handoff`  
+5. **`REOS Start Scheduler`** (Phase 1 — The Scheduler)  
+6. **`REOS Start Follow-Up`** (Phase 1 — The Follow-Up)  
+7. `REOS Post-Qualify` (optional — skip)
 
-Prompt pack: [`prompts/lead-concierge.md`](prompts/lead-concierge.md)  
+Prompt packs: [`prompts/lead-concierge.md`](prompts/lead-concierge.md) · [`prompts/scheduler.md`](prompts/scheduler.md) · [`prompts/follow-up.md`](prompts/follow-up.md)  
 Full setup: [`GHL_SETUP.md`](GHL_SETUP.md)
 
 ---
@@ -29,6 +28,8 @@ Full setup: [`GHL_SETUP.md`](GHL_SETUP.md)
 | `temp_cold` | Yes |
 | `ai_handoff` | Yes |
 | `ai_qualifying` | Optional |
+| `ready_to_book` | Yes — Concierge → Scheduler handoff |
+| `appt_booked` | Yes — set by Appointment Booked workflow |
 | `lead_buyer` / `lead_seller` / `lead_investor` | Optional |
 
 ### Pipeline — Opportunities → Pipelines
@@ -149,7 +150,8 @@ Build this next. Pipeline name in your account: **`New Leads`**.
 3. **If/Else** — opportunity found?  
    - Yes → **Update Opportunity** → Stage **Qualified** (skip if already Appointment Set, if you can filter)  
    - No → **Create Opportunity** → New Leads / **Qualified**  
-4. **Internal Notification** → Assigned User  
+4. **Add Tag** → **`ready_to_book`** (starts **REOS Start Scheduler**)  
+5. **Internal Notification** → Assigned User  
 
 ```text
 HOT LEAD: {{contact.first_name}} {{contact.last_name}}
@@ -164,10 +166,10 @@ Brief:
 
 (Pick merge fields from GHL custom values.)
 
-5. **Create Task** (optional) — “Call Hot lead — {{contact.first_name}}” due today  
-6. **If/Else** — has upcoming appointment on Buyer/Seller Consult?  
+6. **Create Task** (optional) — “Call Hot lead — {{contact.first_name}}” due today  
+7. **If/Else** — tag `appt_booked` exists?  
    - **Yes** → End  
-   - **No** → **Wait 24 hours** → If still no appointment → Internal Notification reminder to assigned user (+ optional booking link SMS to lead)
+   - **No** → **Wait 24 hours** → If still no `appt_booked` → Internal Notification reminder to assigned user
 
 **Publish.**
 
@@ -176,6 +178,8 @@ Brief:
 ---
 
 ## Workflow D — `REOS Warm Nurture`
+
+Keep this for **email/SMS drip cadence**. Conversational nurture is **REOS Follow-Up** (Workflow I).
 
 ### Trigger
 
@@ -188,23 +192,22 @@ Brief:
 
 1. **Find Opportunity** → New Leads  
 2. **If/Else** — found?  
-   - Yes → **Update Opportunity** → Stage **Nurture** (use your nurture/long-term stage name if different)  
+   - Yes → **Update Opportunity** → Stage **Nurture**  
    - No → **Create Opportunity** → New Leads / Nurture  
-3. **Wait** → 2 days  
-4. **Send SMS**
+3. **Add Tag** `follow_up_active` (optional; Start Follow-Up can also key off `temp_warm`)  
+4. **Wait** → 2 days  
+5. **Send SMS** (light) — or skip SMS if Follow-Up bot owns chat check-ins  
 
 ```text
 Hey {{contact.first_name}} — still thinking things through on your side? Happy to share a couple options when useful. No pressure.
 ```
 
-5. **Wait** → 5 days  
-6. **Send Email** — soft “still looking?” + booking link  
-7. **Wait** → 7 days  
-8. **Send SMS** — soft CTA to book a consult  
+6. **Wait** → 5 days  
+7. **Send Email** — soft “still looking?”  
+8. **Wait** → 7 days  
+9. **Send Email** — soft CTA (booking link optional; Scheduler still books)
 
 **Publish.**
-
-**Manual test:** Add tag `temp_warm` → opp moves to Nurture; wait steps will show as waiting in execution.
 
 ---
 
@@ -261,7 +264,125 @@ Totally understand — a team member will reach out shortly.
 
 **Publish.**
 
+---
+
+## Workflow H — `REOS Start Scheduler` (Phase 1 — The Scheduler)
+
+Starts the **REOS Scheduler** bot when the Concierge finishes qualifying and the lead should book.
+
+### Prereqs
+
+1. Create Conversation AI bot **REOS Scheduler** using [`prompts/scheduler.md`](prompts/scheduler.md)  
+2. Tag **`ready_to_book`** exists  
+3. `REOS Appointment Booked` already published  
+
+### Trigger
+
+| Setting | Value |
+|---|---|
+| Trigger | **Contact Tag** |
+| Tag | **`ready_to_book`** added |
+
+Optional second trigger later: `temp_hot` added **and** tag `appt_booked` does not exist (catch Hot leads who never got `ready_to_book`).
+
+### Actions (in order)
+
+1. **If/Else** — has tag `appt_booked`?  
+   - **Yes** → End (already booked)  
+   - **No** → continue  
+2. **If/Else** — has assigned user?  
+   - **No** → **Assign to User**  
+   - **Yes** → continue  
+3. **Update Conversation AI bot and status**  
+   - Bot: **REOS Scheduler** (not Concierge)  
+   - Status: **Active** / Autopilot  
+4. (Optional) **Update Conversation AI** on Concierge → **Inactive** so only Scheduler speaks  
+5. (Optional) SMS if Scheduler does not open on its own: “Next I’ll help you pick a consult time.”  
+
 **Publish.**
+
+### Concierge change (required)
+
+On **REOS Lead Concierge**:
+
+1. Re-paste Goal + Additional Info from updated [`prompts/lead-concierge.md`](prompts/lead-concierge.md) (scheduling handoff, not booking)  
+2. **Disable Appointment Booking** action on Concierge  
+3. Ensure Contact info / prompt adds tag **`ready_to_book`** when Hot or they ask to meet  
+   - If Contact info cannot add tags: use **Trigger a workflow** → tiny workflow that only adds `ready_to_book`, **or** add “Add Tag `ready_to_book`” inside **REOS Hot** as well as Start Scheduler  
+
+**MVP tag bridge:** In **`REOS Hot`**, add action **Add Tag `ready_to_book`** near the start (after assign). That way Hot leads always enter Scheduler even if Concierge cannot apply the tag yet.
+
+### Scheduler bot Appointment Booking
+
+Same calendar settings as before (Buyer/Seller Consult):
+
+- Link-only **Off**  
+- Disable bot after book **On**  
+- Execute workflow **Off** (Appointment Status → Confirmed still runs `REOS Appointment Booked`)  
+- Reschedule **On** · Cancel **Off**  
+
+### Manual test (no SMS)
+
+1. On a test contact with an opp: add tag **`ready_to_book`**  
+2. Confirm **REOS Start Scheduler** runs → Scheduler bot **Active**  
+3. Manually book/confirm appointment → `REOS Appointment Booked` still moves stage + `appt_booked`  
+
+---
+
+## Workflow I — `REOS Start Follow-Up` (Phase 1 — The Follow-Up)
+
+Starts the **REOS Follow-Up** bot for Warm/Cold leads.
+
+### Prereqs
+
+1. Create bot **REOS Follow-Up** from [`prompts/follow-up.md`](prompts/follow-up.md)  
+2. Tags `temp_warm`, `temp_cold` exist  
+3. Scheduler / Concierge already built  
+
+### Triggers (add both)
+
+| Trigger | Value |
+|---|---|
+| Contact Tag | `temp_warm` added |
+| Contact Tag | `temp_cold` added |
+
+### Actions (in order)
+
+1. **If/Else** — tag `appt_booked` exists? *(or Last appointment at not empty, if that is what you use)*  
+   - **Yes** → End  
+   - **No** → continue  
+2. **If/Else** — tag `ready_to_book` exists?  
+   - **Yes** → End (Scheduler owns them)  
+   - **No** → continue  
+3. **If/Else** — has assigned user?  
+   - **No** → Assign to User  
+   - **Yes** → continue  
+4. On **both** assign branches:  
+   - **Update Conversation AI** → **REOS Follow-Up** → **Active**  
+   - **Update Conversation AI** → **REOS Concierge** → **Inactive**  
+   - **Update Conversation AI** → **REOS Scheduler** → **Inactive** (so Follow-Up owns the thread)  
+5. Find/Update opportunity → stage **Nurture** (optional if Warm/Cold workflows already do this)
+
+**Publish.**
+
+### How the three bots hand off
+
+```text
+Concierge (qualify)
+  ├─ temp_hot / ready_to_book → Scheduler (book)
+  └─ temp_warm / temp_cold → Follow-Up (nurture)
+Follow-Up hears “let’s meet” → ready_to_book → Scheduler
+appt_booked → stop Follow-Up / Scheduler booking path done
+```
+
+### Manual test (no SMS)
+
+1. Test contact **without** `appt_booked` / `ready_to_book`  
+2. Add tag **`temp_warm`**  
+3. Expect **REOS Start Follow-Up** execution → Follow-Up **Active**; Concierge + Scheduler **Inactive**  
+4. Add **`ready_to_book`** → Start Scheduler should take over (Follow-Up can stay Inactive on next Scheduler run if you add that step there too)
+
+**Optional:** In **REOS Start Scheduler**, after Scheduler Active, set **Follow-Up → Inactive**.
 
 ---
 
@@ -282,35 +403,28 @@ Only needed if you want a single place that reacts to temperature before Hot/War
 
 ---
 
-## Wire bot → workflows
+## Wire bots → workflows
 
-Back in **Conversation AI → Bot Goals → Appointment Booking** action:
-
-1. Calendar = **REOS Consult**  
-2. Send booking link only = **Off**  
-3. Disable bot after booking = **On**  
-4. Execute workflow on booking = **On** → select **`REOS Appointment Booked`**  
-5. Transfer to employee = optional  
-6. Cancel = **Off** (MVP)  
-7. Reschedule = **On** (or Off)
-
-Ensure bot actions also add tags `temp_hot` / `temp_warm` / `temp_cold` / `ai_handoff` when those outcomes happen (see prompt pack §4).
+| Bot | Appointment Booking | Role |
+|---|---|---|
+| **REOS Lead Concierge** | **Off** | Qualify → temp + ready_to_book |
+| **REOS Scheduler** | **On** | Book consult |
+| **REOS Follow-Up** | **Off** | Nurture Warm/Cold → ready_to_book when ready |
 
 ---
 
 ## Publish checklist
 
-- [ ] Tags created  
-- [ ] Pipeline `REOS Leads` live  
-- [ ] Calendar `REOS Consult` has slots  
+- [ ] Tags including `ready_to_book` + `appt_booked`  
+- [ ] Pipeline **New Leads** stages live  
+- [ ] Calendar Buyer/Seller Consult has slots  
 - [ ] `REOS Appointment Booked` published  
 - [ ] `REOS Intake` published + form attached  
-- [ ] `REOS Hot` published  
-- [ ] `REOS Warm Nurture` published  
-- [ ] `REOS Cold Nurture` published  
-- [ ] `REOS Handoff` published (optional)  
-- [ ] Bot Appointment Booking points at Appointment Booked workflow  
-- [ ] Test with your phone ([`TESTING.md`](TESTING.md) Scenario A)
+- [ ] `REOS Hot` / Warm / Cold / Handoff published  
+- [ ] **REOS Scheduler** bot + `REOS Start Scheduler` published  
+- [ ] **REOS Follow-Up** bot + `REOS Start Follow-Up` published  
+- [ ] Concierge Appointment Booking disabled; Hot adds `ready_to_book`  
+- [ ] SMS/live test when connected ([`TESTING.md`](TESTING.md))
 
 ---
 
