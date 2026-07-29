@@ -2,6 +2,8 @@
 
 Build these in GHL **Automation → Workflows** before finishing Bot Appointment Booking actions.
 
+**Phased build hub:** [`BUILD.md`](BUILD.md) · workflow phase: [`build/04-workflows.md`](build/04-workflows.md)
+
 **Build order**
 
 1. Tags + Pipeline + Calendar (prereqs)  
@@ -30,6 +32,7 @@ Full setup: [`GHL_SETUP.md`](GHL_SETUP.md)
 | `temp_hot` | Yes |
 | `temp_warm` | Yes |
 | `temp_cold` | Yes |
+| `timeline_0_30` / `timeline_1_3` / `timeline_3_6` / `timeline_6_plus` / `timeline_exploring` | Yes — Warm/Cold drip branching |
 | `ai_handoff` | Yes |
 | `ai_qualifying` | Optional |
 | `ready_to_book` | Yes — Concierge → Scheduler handoff |
@@ -95,9 +98,15 @@ Use **Option 1** unless you’re sure the bot enrollment path is available.
 | # | Action | Config |
 |---|---|---|
 | 1 | **Create/Update Opportunity** or **Update Opportunity Pipeline Stage** | Pipeline `REOS Leads` → Stage **Appointment Set** |
-| 2 | **Remove Contact Tag** (optional) | `ai_qualifying` |
-| 3 | **Send SMS** (optional) | `You're booked! Reply if you need to reschedule.` |
-| 4 | **Internal Notification** / **Send Email** to assigned user | Subject: `Appointment booked — {{contact.first_name}}` · Body: include AI Summary / Agent Brief custom values |
+| 2 | **Add Contact Tag** | `appt_booked` |
+| 3 | **Remove Contact Tag** | `ready_to_book` — required so “ready to book” smart lists clear |
+| 4 | **Remove Contact Tag** (optional) | `ai_qualifying` |
+| 5 | **If/Else — confirm on channel** (after `appt_booked`; check Meta before SMS) | Same body on each opener path: `You're booked! Reply here if you need to reschedule.` |
+| 5a | Tags include `source_facebook` | **Messenger** / **Facebook Interactive Messenger** → Reply to DM |
+| 5b | Tags include `source_instagram` | **Instagram Interactive Messenger** |
+| 5c | Tags include `channel_sms` | **Send SMS** |
+| 5d | None | skip contact message (agent notify still runs) |
+| 6 | **Internal Notification** / **Send Email** to assigned user | Subject: `Appointment booked — {{contact.first_name}}` · Body: include AI Summary / Agent Brief custom values |
 
 ### Filters (optional)
 
@@ -187,6 +196,40 @@ Prompt: [`prompts/researcher.md`](prompts/researcher.md)
 
 ---
 
+## Workflow K2 — `REOS Field Sync` (non-premium CRM log)
+
+Conversation AI **Contact Info** often fails to overwrite fields (and may not fire on social). This workflow appends each inbound message into **AI Summary** without GPT/OpenAI premium actions.
+
+| Setting | Value |
+|---|---|
+| Trigger | **Customer Replied** (no channel filter) |
+| If/Else | Tags include `research_done` (use your GHL spelling) → continue; else **End** |
+| Action | **Update Contact Field** → **AI Summary** = existing AI Summary custom value + `{{message.body}}` |
+
+**Notes**
+- Appends the **latest inbound message only** (not a polished Concierge summary).
+- Contact Info can still fill **empty** fields when it works (e.g. Business Name).
+- Do not use GPT Powered by OpenAI unless you later want structured extraction/overwrite.
+- Re-publish **REOS IG Bridge** separately when IG testing resumes (it was paused during FB debug).
+
+**Publish.**
+
+---
+
+## Workflow K3 — `REOS Reactivate Concierge` (optional)
+
+**Prefer native Stop bot setting:** on Concierge **Stop bot** action, enable **Reactivate bot after** (e.g. 5–10 min) for goodbye-style pauses. Disable that checkbox for lasting human handoff. Custom tag on Stop bot is optional.
+
+Only build this workflow if you need tag-based reactivation:
+
+| Setting | Value |
+|---|---|
+| Trigger | **Contact Tag** → `Stop bot` **removed** |
+| If/Else | `compliance_hold` OR `opted_out` → **End** (stay off) |
+| Else | **Update Conversation AI** → Concierge **Active**; Scheduler + Follow-Up **Inactive** |
+
+---
+
 ## Workflow L — `REOS Coordinator` (Phase 1 — The Coordinator)
 
 Assigns the human owner and turns on **exactly one** specialist bot (or none). Respects channel tags from Researcher.
@@ -232,15 +275,27 @@ Prompt: [`prompts/coordinator.md`](prompts/coordinator.md)
    - **Yes** → Add Tag `coord_email_only` → all three bots **Inactive** → Internal Notification: “Email-only lead — reach out by email” → Add Tag `coordinated` → **End**  
    - **No** → continue  
 
+**Critical — action order:** each **Update Conversation AI** step **assigns** that bot to the contact. The **last** step wins as Assigned bot. Always put the bot that should own the thread **last**, with the status you want (usually **Active**). Putting Follow-Up/Scheduler **Inactive** last leaves Assigned = that bot + Inactive (silent forever). That is why the conversation UI says change bots in sub-account settings — Assigned is locked by workflow.
+
 6. **If/Else** — has tag `ready_to_book`?  
-   - **Yes** → Scheduler **Active** · Concierge **Inactive** · Follow-Up **Inactive** → Add Tag `coordinated` → **End**  
+   - **Yes** → Concierge **Inactive** → Follow-Up **Inactive** → Scheduler **Active** (last) → **channel opener** (see below) → Add Tag `coordinated` → **End**  
    - **No** → continue  
+   - **Why opener:** Conversation AI does not auto-speak when activated mid-thread; without this, Scheduler stays silent until the lead messages again.  
+   - **Opener by channel** — do **not** stack all three on every contact. After Scheduler Active, add **If/Else** on tags, then one opener per branch:  
+     | Tag | Action (Communication) |  
+     |---|---|  
+     | `source_facebook` or Messenger contact | **Facebook Interactive Messenger** / **Messenger** → Reply to DM |  
+     | `source_instagram` **OR** `channel_instagram` | **Instagram Interactive Messenger** |  
+     | Live Chat (no Meta tag; or tag you use for widget) | **Send Live Chat Message** |  
+     | `channel_sms` | **Send SMS** |  
+     | None / unknown | skip opener (lead must reply) or Internal Notification |  
+   - Same body on every opener: `Great. Let's get a consult on the calendar. Do mornings or afternoons work better?` 
 
 7. **If/Else** — has tag `temp_warm` **OR** `temp_cold`?  
-   - **Yes** → Follow-Up **Active** · Concierge **Inactive** · Scheduler **Inactive** → Add Tag `coordinated` → **End**  
+   - **Yes** → Concierge **Inactive** → Scheduler **Inactive** → Follow-Up **Active** (last) → Add Tag `coordinated` → **End**  
    - **No** → continue  
 
-8. **Else** (usually `researcher_done`) → Concierge **Active** · Scheduler **Inactive** · Follow-Up **Inactive** → Add Tag `coordinated`
+8. **Else** (usually `researcher_done`) → Scheduler **Inactive** → Follow-Up **Inactive** → Concierge **Active** (last) → Add Tag `coordinated`
 
 **C — Scout ping (optional branch before End on any path that continues)**
 
@@ -359,9 +414,41 @@ Brief:
 
 ---
 
-## Workflow D — `REOS Warm Nurture`
+## Nurture drips (Warm / Cold + timeline)
 
-Keep this for **email/SMS drip cadence**. Conversational nurture is **REOS Follow-Up** (Workflow I).
+**Split of duties**
+
+| Piece | Job |
+|---|---|
+| Concierge | Qualifies → Tag Warm/Cold (+ timeline tag) |
+| Coordinator / Start Follow-Up | Follow-Up **Active** last + optional chat opener |
+| **REOS Warm** / **REOS Cold** (these workflows) | Opp → Nurture, agent notify/task, **email drip** by cadence |
+| Follow-Up bot | Replies in chat; escalates to `ready_to_book` when ready |
+
+Prefer **email** for drips so you don’t double-message IG/FB/SMS while Follow-Up owns chat. Use chat opener once at handoff.
+
+### Timeline tags (Concierge Trigger → tiny Add Tag workflows)
+
+| Tag | When |
+|---|---|
+| `timeline_0_30` | ASAP or 0-30 Days |
+| `timeline_1_3` | 1-3 Months |
+| `timeline_3_6` | 3-6 Months |
+| `timeline_6_plus` | 6+ Months |
+| `timeline_exploring` | Just Exploring |
+
+Remove prior `timeline_*` tags when timeline changes (optional cleanup step in each Tag Timeline workflow).
+
+### Exit check (before every Wait send)
+
+If/Else → End drip branch if any of:
+- `appt_booked` · `ready_to_book` · `opted_out` · `compliance_hold` · `ai_handoff`
+
+---
+
+## Workflow D — `REOS Warm` (nurture drip)
+
+Conversational nurture is **REOS Follow-Up**. This workflow = CRM + agent alert + **email** cadence.
 
 ### Trigger
 
@@ -370,30 +457,99 @@ Keep this for **email/SMS drip cadence**. Conversational nurture is **REOS Follo
 | Trigger | **Contact Tag** |
 | Tag | `temp_warm` added |
 
-### Actions (in order)
+### Part A — always (keep what you have)
 
-1. **Find Opportunity** → New Leads  
-2. **If/Else** — found?  
-   - Yes → **Update Opportunity** → Stage **Nurture**  
-   - No → **Create Opportunity** → New Leads / Nurture  
-3. **Add Tag** `follow_up_active` (optional; Start Follow-Up can also key off `temp_warm`)  
-4. **Wait** → 2 days  
-5. **Send SMS** (light) — or skip SMS if Follow-Up bot owns chat check-ins  
+1. Assign user if empty  
+2. Find/Create opportunity → stage **Nurture**  
+3. Internal Notification + task (optional)  
+   - Subject: `REOS Warm nurture — {{contact.first_name}}`  
+   - Body: `{{contact.first_name}} {{contact.last_name}} tagged temp_warm. Opp in Nurture. Follow-Up owns chat; email drip starting.`  
+4. If `appt_booked` → **End**
+
+### Part B — chat opener (only if not on Coordinator Lead Temp)
+
+Skip if Coordinator already sends Follow-Up opener. Else after bots are Active elsewhere, optional: channel opener once (see Follow-Up opener copy below).
+
+### Part C — email drip (add after Part A)
+
+**If/Else timeline (near vs mid)**
+
+**Near** — tags include `timeline_0_30` **OR** `timeline_1_3` (or neither timeline tag → treat as Near):
+
+| Step | Action |
+|---|---|
+| 1 | Exit check → End if booked/handoff/opt-out |
+| 2 | **Wait** 3 days |
+| 3 | Exit check |
+| 4 | **Send Email** — subject: `Still exploring {{contact.city}}?` · body soft check-in + “Has your timeline moved up?” |
+| 5 | **Wait** 4 days |
+| 6 | Exit check |
+| 7 | **Send Email** — light value (1 tip) + soft “want to talk when you’re ready?” |
+| 8 | **Wait** 7 days |
+| 9 | Exit check |
+| 10 | **Send Email** — “Anything change on timing?” · no hard book link required |
+
+**Mid** — `timeline_3_6`:
+
+| Step | Action |
+|---|---|
+| 1 | Exit check |
+| 2 | **Wait** 7 days |
+| 3 | Exit check → **Send Email** — soft check-in |
+| 4 | **Wait** 14 days |
+| 5 | Exit check → **Send Email** — value + timeline question |
+| 6 | **Wait** 14 days |
+| 7 | Exit check → **Send Email** — “Still on a ~3–6 month plan?” |
+
+### Email copy (Warm — no em dashes)
+
+**1 — Check-in**  
+Subject: `Quick check-in, {{contact.first_name}}`
 
 ```text
-Hey {{contact.first_name}} — still thinking things through on your side? Happy to share a couple options when useful. No pressure.
+Hi {{contact.first_name}},
+
+Just checking in. No pressure on your side.
+
+Has your timeline moved up at all, or are you still in exploring mode?
+
+Thanks,
+{{user.first_name}}
 ```
 
-6. **Wait** → 5 days  
-7. **Send Email** — soft “still looking?”  
-8. **Wait** → 7 days  
-9. **Send Email** — soft CTA (booking link optional; Scheduler still books)
+**2 — Value + soft**  
+Subject: `One tip while you plan`
+
+```text
+Hi {{contact.first_name}},
+
+Quick idea while you plan: write down your must-haves vs nice-to-haves for {{contact.target_location}}. It makes the search much faster later.
+
+If you want a second set of eyes when you're closer, reply here and we'll help.
+
+Thanks,
+{{user.first_name}}
+```
+
+**3 — Timing**  
+Subject: `Anything change on timing?`
+
+```text
+Hi {{contact.first_name}},
+
+Anything change on timing?
+
+No rush. Reply anytime if you want help.
+
+Thanks,
+{{user.first_name}}
+```
 
 **Publish.**
 
 ---
 
-## Workflow E — `REOS Cold Nurture`
+## Workflow E — `REOS Cold` (nurture drip)
 
 ### Trigger
 
@@ -402,23 +558,68 @@ Hey {{contact.first_name}} — still thinking things through on your side? Happy
 | Trigger | **Contact Tag** |
 | Tag | `temp_cold` added |
 
-### Actions (in order)
+### Part A — always
 
-1. **Find Opportunity** → New Leads  
-2. **If/Else** — found?  
-   - Yes → **Update Opportunity** → Stage **Nurture**  
-   - No → **Create Opportunity** → New Leads / Nurture  
-3. **Wait** → 7 days  
-4. **Send Email** — long-term value (buyer guide / seller checklist)  
-5. **Wait** → 30 days  
-6. **Send Email** — monthly market note  
-7. **Wait** → 30 days  
-8. **Send Email** — repeat monthly (or enroll in a Cold campaign)
+Same as Warm: assign, opp → **Nurture**, notify/task, End if `appt_booked`.
 
-No hard booking push.
+### Part B — monthly-style email drip
+
+Use for `timeline_6_plus`, `timeline_exploring`, or no near/mid timeline tag.
+
+| Step | Action |
+|---|---|
+| 1 | Exit check |
+| 2 | **Wait** 7 days |
+| 3 | Exit check → **Send Email** — buyer/seller prep guide (no book push) |
+| 4 | **Wait** 30 days |
+| 5 | Exit check → **Send Email** — light market / education note |
+| 6 | **Wait** 30 days |
+| 7 | Exit check → **Send Email** — “Still planning for later this year?” |
+| 8 | Loop or enroll in Cold email campaign for monthly repeats |
+
+### Email copy (Cold)
+
+**Prep guide**
+
+```text
+Hi {{contact.first_name}},
+
+Since you're planning ahead, here's a simple prep list: get clear on budget range, must-haves, and timing. No rush.
+
+When you're closer, we're here. Reply anytime with questions.
+
+Thanks,
+{{user.first_name}}
+```
+
+**Monthly**
+
+```text
+Hi {{contact.first_name}},
+
+Monthly check-in only. Still on a longer timeline for {{contact.target_location}}?
+
+If anything changed (sooner or later), just reply and we'll adjust.
+
+Thanks,
+{{user.first_name}}
+```
+
+No hard booking push on Cold.
 
 **Publish.**
 
+---
+
+## Follow-Up chat opener (Coordinator Lead Temp or Start Follow-Up)
+
+After Follow-Up → **Active** (last), If/Else channel (FB / IG / SMS) — one message:
+
+```text
+Hey {{contact.first_name}}. No rush on your side. Want any helpful next steps while you explore, or are you all set for now?
+```
+
+Do **not** put long email drips on Start Follow-Up.
 ---
 
 ## Workflow F — `REOS Handoff` (recommended)
@@ -441,7 +642,7 @@ No hard booking push.
 5. **Send SMS** (optional) to contact:
 
 ```text
-Totally understand — a team member will reach out shortly.
+Totally understand. A team member will reach out shortly.
 ```
 
 **Publish.**
@@ -475,11 +676,12 @@ Optional second trigger later: `temp_hot` added **and** tag `appt_booked` does n
 2. **If/Else** — has assigned user?  
    - **No** → **Assign to User**  
    - **Yes** → continue  
-3. **Update Conversation AI bot and status**  
-   - Bot: **REOS Scheduler** (not Concierge)  
-   - Status: **Active** / Autopilot  
-4. (Optional) **Update Conversation AI** on Concierge → **Inactive** so only Scheduler speaks  
-5. (Optional) SMS if Scheduler does not open on its own: “Next I’ll help you pick a consult time.”  
+3. **Update Conversation AI** (**Scheduler Active must be last** on every branch — Has user / Does not have user):  
+   Concierge **Inactive** → Follow-Up **Inactive** → Scheduler **Active** (last)  
+   Wrong order (Scheduler Active then Follow-Up Inactive) leaves Assigned = Follow-Up Inactive and kills outreach.  
+   Prefer **pausing Start Scheduler** if **REOS Coordinator** already owns the `ready_to_book` route (avoid double flips + double openers).  
+4. **Channel opener** (only if Start Scheduler is live and Coordinator does not already send it): FB / IG / SMS If/Else after Scheduler Active — body:  
+   `Great. Let's get a consult on the calendar. Do mornings or afternoons work better?` 
 
 **Publish.**
 
@@ -539,10 +741,10 @@ Starts the **REOS Follow-Up** bot for Warm/Cold leads.
 3. **If/Else** — has assigned user?  
    - **No** → Assign to User  
    - **Yes** → continue  
-4. On **both** assign branches:  
-   - **Update Conversation AI** → **REOS Follow-Up** → **Active**  
+4. On **both** assign branches (**Follow-Up Active must be last**):
    - **Update Conversation AI** → **REOS Concierge** → **Inactive**  
-   - **Update Conversation AI** → **REOS Scheduler** → **Inactive** (so Follow-Up owns the thread)  
+   - **Update Conversation AI** → **REOS Scheduler** → **Inactive**  
+   - **Update Conversation AI** → **REOS Follow-Up** → **Active** (last — owns the thread)
 5. Find/Update opportunity → stage **Nurture** (optional if Warm/Cold workflows already do this)
 
 **Publish.**
@@ -679,6 +881,113 @@ Only needed if you want a single place that reacts to temperature before Hot/War
 | **REOS Lead Concierge** | **Off** | Qualify → temp + ready_to_book |
 | **REOS Scheduler** | **On** | Book consult |
 | **REOS Follow-Up** | **Off** | Nurture Warm/Cold → ready_to_book when ready |
+
+---
+
+## Bot Active / Inactive audit (when Concierge goes silent)
+
+Use this when tags look correct (`research_done` + `coordinated`) but the bot stops after one reply.
+
+**First check Assigned bot:** if it shows Follow-Up/Scheduler **Inactive** after a Concierge route, Coordinator’s last Update Conversation AI was wrong — see Workflow L order note.
+
+### Workflows that set Concierge **Inactive** (by design)
+
+| Workflow | When | What it does to Concierge |
+|---|---|---|
+| **REOS Coordinator** | `ready_to_book` | Inactive (Scheduler Active) |
+| **REOS Coordinator** | `temp_warm` / `temp_cold` | Inactive (Follow-Up Active) |
+| **REOS Coordinator** | `ai_handoff` / `appt_booked` / `compliance_hold` / `opted_out` | Inactive |
+| **REOS Coordinator** | `channel_email` + no phone | Inactive (`coord_email_only`) |
+| **REOS Start Scheduler** | `ready_to_book` | Optional: Concierge Inactive |
+| **REOS Start Follow-Up** | `temp_warm` / `temp_cold` | Concierge Inactive |
+| **REOS Compliance Guard** | `opted_out` / `compliance_hold` / `dnd` | All bots Inactive |
+| **REOS Handoff** (if built) | `ai_handoff` | Concierge Inactive |
+| **REOS Tag Ready to Book** (custom) | If you added Update Conversation AI there | Concierge Inactive |
+| **REOS Hot** | If it adds `ready_to_book` → Start Scheduler / Coordinator | Concierge Inactive next |
+
+### Workflows that should **not** touch Conversation AI
+
+| Workflow | Expected actions |
+|---|---|
+| **REOS IG Bridge** | Tags only (`source_instagram`, `ai_qualifying`) — **no** Active/Inactive |
+| **REOS Field Sync** | Update Contact Field only — **no** Active/Inactive |
+| **REOS Intake** | Opp + tags — **no** Concierge Active/Inactive |
+| **REOS Researcher** | Channel tags + `research_done` — **no** Active/Inactive if Coordinator owns routing |
+| **REOS Tag Hot/Warm/Cold** | Add temp tag only — **no** Active/Inactive |
+
+### GHL hunt (one silent contact)
+
+1. Note time of the unanswered inbound message.  
+2. Open **Automation → Workflows** → filter **Executions** for that contact around that time.  
+3. Open every run → look for **Update Conversation AI** → Concierge **Inactive**.  
+4. Note which workflow did it and which branch/tag caused it.  
+5. Also confirm contact does **not** have: `ready_to_book`, `temp_warm`, `temp_cold`, `ai_handoff`, `opted_out`, `compliance_hold`, `coord_email_only`.
+
+### Suspicious races on Meta (IG/FB)
+
+- Concierge **Trigger a Workflow** for Tag Hot/Warm/Cold or Ready to Book fires too early → Coordinator/Start Follow-Up/Start Scheduler flips Concierge **Inactive** while you’re still qualifying.  
+- **REOS Start Follow-Up** still published + accidental `temp_warm` → Concierge off, Follow-Up on (may also be silent on Meta).  
+- Custom **Tag Ready to Book** workflow that both tags and sets Concierge Inactive.
+
+**Meta one-shot with none of the above:** GHL Conversation AI issue — still file support; workflows aren’t the deactivator.
+
+---
+
+## Smart lists (work queues)
+
+Use **AND** between filters. Do not use loose `OR tag is not X` patterns that pull half the CRM.
+
+### Ready to Book
+
+- Tag includes `ready_to_book`
+- Tag does **not** include `appt_booked`
+- Tag does **not** include `ai_handoff`
+- Tag does **not** include `opted_out`
+- Tag does **not** include `compliance_hold`
+
+### Needs Contact Info
+
+- Tag includes `needs_contact_info`
+- Tag does **not** include `appt_booked`
+- Tag does **not** include `ai_handoff`
+- Tag does **not** include `opted_out`
+- Tag does **not** include `compliance_hold`
+
+### Human Handoff
+
+- Tag includes `ai_handoff`
+- Tag does **not** include `opted_out`
+- Tag does **not** include `compliance_hold`
+- Tag does **not** include `appt_booked` (optional)
+
+Also **Remove Tag** `ready_to_book` on Handoff / Compliance paths so they leave Ready to Book.
+
+### Nurture (Warm / Cold)
+
+- Tag includes `temp_warm` **OR** `temp_cold` (one filter group / either tag)
+- Tag does **not** include `ready_to_book`
+- Tag does **not** include `appt_booked`
+- Tag does **not** include `ai_handoff`
+- Tag does **not** include `opted_out`
+- Tag does **not** include `compliance_hold`
+- Tag does **not** include `needs_contact_info`
+
+Optional split lists: **Nurture Warm** (`temp_warm` only) and **Nurture Cold** (`temp_cold` only) with the same exclusions.
+
+When they accept scheduling → `ready_to_book` → they leave Nurture and enter Ready to Book. Follow-Up bot owns chat; Warm/Cold email workflows can still run.
+
+### Email Only
+
+Coordinator tags these when `channel_email` and phone is empty (bots stay off; human emails).
+
+- Tag includes `coord_email_only`
+- Tag does **not** include `appt_booked`
+- Tag does **not** include `ai_handoff`
+- Tag does **not** include `opted_out`
+- Tag does **not** include `compliance_hold`
+- Tag does **not** include `ready_to_book` (optional; should already be off)
+
+Optional: also require tag `channel_email`, or Phone is empty. Agent works this list by email, not SMS/CAI.
 
 ---
 

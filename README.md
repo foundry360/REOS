@@ -1,12 +1,29 @@
 # REOS — Real Estate Operating System (GoHighLevel)
 
-GHL-native **Phase 1 AI team** (Researcher + Coordinator + Concierge + Scheduler + Follow-Up + Scout + Compliance Guard): confirm reachability, assign/route, qualify, book, nurture, daily-prioritize, and stop outreach on opt-out — using Conversation AI and Workflows inside GoHighLevel.
+GHL-native **Phase 1 AI team** (Researcher + Coordinator + Concierge + Scheduler + Follow-Up + Scout + Compliance Guard): confirm reachability, assign/route, qualify, book, nurture, daily-prioritize, and stop outreach on opt-out using Conversation AI and Workflows inside GoHighLevel.
 
-This repo seeds CRM fields and ships copy-paste setup docs. There is **no** external AI orchestration server for the MVP.
+This repo seeds CRM fields and ships **full build documentation**. There is **no** external AI orchestration server for the MVP.
 
-## Quick start
+## Documentation
 
-### 1. Connect GHL (Private Integration Token)
+**Start with the build guide:** [`docs/BUILD.md`](docs/BUILD.md)
+
+| Doc | Purpose |
+|---|---|
+| [`docs/BUILD.md`](docs/BUILD.md) | Master REOS build (phases 0–8) |
+| [`docs/build/CHECKLIST.md`](docs/build/CHECKLIST.md) | Master build checkboxes |
+| [`docs/build/REFERENCE.md`](docs/build/REFERENCE.md) | Tags, bots, workflow catalog |
+| [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md) | Workflow action tables |
+| [`docs/TESTING.md`](docs/TESTING.md) | Smoke tests |
+| [`docs/ONBOARDING.md`](docs/ONBOARDING.md) | Client install after Snapshot |
+| [`docs/CUSTOMER-ONBOARDING.md`](docs/CUSTOMER-ONBOARDING.md) | Sales → Support → customer journey |
+| [`docs/README.md`](docs/README.md) | Full docs index |
+
+Prompt packs: [`docs/prompts/`](docs/prompts/)
+
+## Quick start (master location)
+
+### 1. Connect GHL
 
 ```bash
 cp .env.example .env
@@ -21,43 +38,36 @@ npm run connect
 npm run seed:fields
 ```
 
-### 3. Configure GHL (manual)
+### 3. Build REOS in GHL
 
-Follow **[`docs/GHL_SETUP.md`](docs/GHL_SETUP.md)** for pipeline, tags, calendar, and bot.
+Follow **[`docs/BUILD.md`](docs/BUILD.md)** in order (fields → tags → pipeline → calendar → bots → workflows → lists → sources → test → Snapshot).
 
-Build automations from **[`docs/WORKFLOWS.md`](docs/WORKFLOWS.md)** (Intake, Researcher, Coordinator, Compliance Guard, Appointment Booked, Hot, Warm, Cold, Handoff, Scheduler, Follow-Up, Scout).
-
-Paste bot / agent instructions from:
-
-- **[`docs/prompts/researcher.md`](docs/prompts/researcher.md)** — channel + language (workflow MVP)  
-- **[`docs/prompts/coordinator.md`](docs/prompts/coordinator.md)** — assign + which bot (workflow)  
-- **[`docs/prompts/compliance-guard.md`](docs/prompts/compliance-guard.md)** — opt-out kill-switch (workflow)  
-- **[`docs/prompts/lead-concierge.md`](docs/prompts/lead-concierge.md)** — qualify  
-- **[`docs/prompts/scheduler.md`](docs/prompts/scheduler.md)** — book  
-- **[`docs/prompts/follow-up.md`](docs/prompts/follow-up.md)** — nurture  
-- **[`docs/prompts/scout.md`](docs/prompts/scout.md)** — daily priority (workflow, not a chat bot)
+Use [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md) for click-path workflow steps and [`docs/prompts/`](docs/prompts/) for Bot Goals.
 
 ### 4. Test
 
-Use **[`docs/TESTING.md`](docs/TESTING.md)**.
+[`docs/TESTING.md`](docs/TESTING.md)
 
-## Architecture
+### 5. Snapshot and client installs
+
+[`docs/build/08-snapshot-master.md`](docs/build/08-snapshot-master.md) then [`docs/ONBOARDING.md`](docs/ONBOARDING.md) (CSV: [`docs/REOS-Onboarding-Checklist.csv`](docs/REOS-Onboarding-Checklist.csv)).
+
+## Architecture (product)
 
 ```text
-Lead → GHL Form/FB/SMS
-    → Intake (opportunity + ai_qualifying)
-    → Researcher (channel tags + researcher_done)
-    → Coordinator (assign + exclusive bot; respects compliance_hold)
-    → Concierge: qualify + score + brief
-    → Hot/ready_to_book → Scheduler books
-    → Warm/Cold → Follow-Up → ready_to_book → Scheduler
-    → Scout: daily Hot booking catch
-    → Compliance Guard: opted_out → all bots Inactive
+Lead → Intake → Researcher → Coordinator
+  → Concierge qualify
+  → Hot/ready_to_book → Scheduler
+  → Warm/Cold → Follow-Up
+  → Scout daily catch
+  → Compliance Guard on opt-out
 ```
+
+SaaS accounts: Sales (Closed Won) → Support form/tracker → Customer REOS sub-account (Snapshot). See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 | In GHL | In this repo |
 |---|---|
-| Bot, workflows, calendar, pipeline, tags | Field seed script, prompts, setup + test docs |
+| Bots, workflows, calendar, pipeline, tags | Field seed script, prompts, build + test docs |
 
 ## Scripts
 
@@ -70,9 +80,7 @@ Lead → GHL Form/FB/SMS
 ## Custom fields (contact)
 
 - **Intent:** Lead Type, Lead Temperature  
-- **Buyer:** Target Location, Budget, Property Type, Financing Status, Timeline, Must Have Features  
-- **Seller:** Property Address, Estimated Value, Selling Timeline, Motivation  
-- **Investor:** Investment Strategy, Target Markets, Investment Goals  
+- **Buyer / Seller / Investor:** profile fields  
 - **Contact Preferences:** Preferred Channel, Preferred Language  
 - **AI:** AI Summary, Qualification Score, Recommended Next Action, Agent Brief  
 

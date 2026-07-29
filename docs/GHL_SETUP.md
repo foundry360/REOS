@@ -2,6 +2,8 @@
 
 Simple native workflow. No external AI server.
 
+**Prefer the phased build guide:** [`BUILD.md`](BUILD.md) (phases 0–8 + [`build/CHECKLIST.md`](build/CHECKLIST.md)). This file is the narrative twin.
+
 **Flow:** Lead arrives → **Researcher** (channel) → **Coordinator** (assign + which bot) → **Concierge** qualifies → Hot/`ready_to_book` → **Scheduler** · Warm/Cold → **Follow-Up** · **Scout** daily priority · **Compliance Guard** stops bots on opt-out.
 
 Prompt packs: [`prompts/lead-concierge.md`](prompts/lead-concierge.md) · [`prompts/scheduler.md`](prompts/scheduler.md) · [`prompts/follow-up.md`](prompts/follow-up.md) · [`prompts/scout.md`](prompts/scout.md) · [`prompts/researcher.md`](prompts/researcher.md) · [`prompts/coordinator.md`](prompts/coordinator.md) · [`prompts/compliance-guard.md`](prompts/compliance-guard.md)  
@@ -87,7 +89,7 @@ Stages (in order):
    - §1 → **Personality**
    - §2 → **Goal or Intent**
    - §3 → **Additional Information** (or Additional Instructions)
-5. Configure **Bot Actions** from §4 (Contact info, handoff, stop bot — **not** Appointment Booking).
+5. Configure **Bot Actions** from §4 (Contact info, Human handover — **not** Appointment Booking). **Stop bot = Off** on Concierge (false stops kill multi-turn IG/FB chats; use Compliance Guard + `opted_out` for opt-out).
 6. Enable channels: **SMS** first; add FB/IG when ready.
 7. **Bot Training** optional — skip for launch.
 
@@ -96,7 +98,7 @@ Stages (in order):
 1. Create bot: **`REOS Scheduler`**.
 2. Paste [`prompts/scheduler.md`](prompts/scheduler.md) §1–§3 into Bot Goals.
 3. Enable **Appointment Booking** on Buyer/Seller Consult (disable after book **On**).
-4. Enable Human handover + Stop bot.
+4. Enable Human handover. Prefer **Stop bot Off** (same false-stop risk as Concierge); Compliance Guard handles opt-out.
 5. Build workflow **`REOS Start Scheduler`** (tag `ready_to_book` → activate Scheduler) — see [`WORKFLOWS.md`](WORKFLOWS.md) Workflow H.
 6. On **REOS Hot**, add tag **`ready_to_book`** so Hot leads always reach Scheduler.
 7. Turn **Off** Appointment Booking on the Concierge bot if it was enabled earlier.
@@ -105,7 +107,7 @@ Stages (in order):
 
 1. Create bot: **`REOS Follow-Up`**.
 2. Paste [`prompts/follow-up.md`](prompts/follow-up.md) §1–§3 into Bot Goals.
-3. Actions: Contact info (light), Human handover, Stop bot — **no** Appointment Booking.
+3. Actions: Contact info (light), Human handover — **no** Appointment Booking; prefer **Stop bot Off**.
 4. Build **`REOS Start Follow-Up`**: triggers `temp_warm` / `temp_cold` → Follow-Up Active; Concierge + Scheduler Inactive — see [`WORKFLOWS.md`](WORKFLOWS.md) Workflow I.
 5. Keep Warm/Cold drip workflows for email cadence; Follow-Up owns conversational check-ins.
 

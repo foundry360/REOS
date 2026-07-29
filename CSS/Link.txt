@@ -1,0 +1,272 @@
+/* Link */
+.hl_header--controls .btn-yellow{
+	background-color: #1b1d21 !important;
+}
+
+/* Link */
+.hl_header--controls .btn-changelog{
+	background-color: #1b1d21;
+}
+
+/* Avatar img */
+.dropdown-toggle .avatar_img{
+	background-color: #155eef !important;
+}
+
+
+/* Tabs tab label */
+.n-tabs-tab--active .n-tabs-tab__label{
+	color: #1b1d21;
+}
+
+/* Tabs tab */
+.n-tabs-tab-wrapper .n-tabs-tab--active{
+	color: #1b1d21 !important;
+}
+
+/* Lead connector */
+.relative .flex-grow{
+	background-color: #1b1d21;
+}
+
+/* Container fluid */
+.hl_header .container-fluid{
+	background-color: #ffffff;
+}
+
+/* Sidebar agency */
+.flex:nth-child(3) .hl-card-content{
+	background-color: #ffffff !important;
+}
+
+/* Card footer */
+.flex-grow .hl-card-footer{
+	background-color: #ffffff;
+}
+
+/* Sidebar agency */
+.flex:nth-child(7) .hl-card-content{
+	background-color: #ffffff !important;
+}
+
+/* Sidebar agency */
+.flex:nth-child(9) .hl-card-content{
+	background-color: #ffffff !important;
+}
+
+/* Sidebar agency */
+.flex:nth-child(11) .hl-card-content{
+	background-color: #ffffff !important;
+}
+
+/* Sidebar agency */
+.flex:nth-child(13) .hl-card-content{
+	background-color: #ffffff !important;
+}
+
+/* Sidebar agency */
+.flex:nth-child(15) .hl-card-content{
+	background-color: #ffffff !important;
+}
+
+/* ------------------------------------------------------------------
+   Not on this page
+   The selectors below matched nothing on the page this CSS was
+   exported from; most likely styles carried over from another page
+   or a previous variation. Apply them only where they belong; it is
+   safe to ignore any that do not fit this page.
+   ------------------------------------------------------------------ */
+
+/* #tb_lists .items-center */
+#tb_lists .items-center{
+	color: #1b1d21;
+}
+
+/* .flex #tb_lists */
+.flex #tb_lists{
+	color: #1b1d21;
+}
+
+/* .d-flex #add-record-btn */
+.d-flex #add-record-btn{
+	background-color: #1b1d21 !important;
+	border-color: #1b1d21;
+	border-style: solid;
+	border-width: 1px;
+}
+
+/* .flex .h-8 */
+.flex .h-8{
+	background-color: #1b1d21;
+}
+
+/* .relative #new-appointment-button */
+.relative #new-appointment-button{
+	background-color: #1b1d21 !important;
+	border-color: #1b1d21;
+}
+
+/* .kanban svg */
+.kanban svg{
+	color: #1b1d21;
+}
+
+/* #import-btn .hr-button__content */
+#import-btn .hr-button__content{
+	color: #1b1d21;
+}
+
+/* .flex #customizations-button */
+.flex #customizations-button{
+	color: #1b1d21;
+	border-color: rgba(27, 29, 33, 0.76);
+}
+
+/* #industry-select .n-base-selection-input__content */
+#industry-select .n-base-selection-input__content{
+	color: #1b1d21;
+}
+
+/* .fc-day-tue .fc-col-header-cell-cushion */
+.fc-day-tue .fc-col-header-cell-cushion{
+	color: #98a2b3 !important;
+	font-weight: 600;
+}
+
+/* #industry-select .n-base-selection-label */
+#industry-select .n-base-selection-label{
+	border-color: rgba(27, 29, 33, 0.76);
+}
+
+/* #customizations-button .w-4 */
+#customizations-button .w-4{
+	color: #1b1d21;
+}
+
+/* .flex-shrink-0 #new-conversation-btn-collapsed */
+.flex-shrink-0 #new-conversation-btn-collapsed{
+	background-color: #1b1d21 !important;
+	border-color: #1b1d21;
+}
+
+/* .flex .text-blue-600, .flex .sidebar-option-button:nth-child(2) */
+.flex .text-blue-600, .flex .sidebar-option-button:nth-child(2){
+	background-color: #d0d0d0 !important;
+	color: #ffffff !important;
+}
+
+/* #sidebar-activities-icon svg */
+#sidebar-activities-icon svg{
+	color: #1b1d21;
+}
+
+/* .flex .w-8:nth-child(7) */
+.flex .w-8:nth-child(7){
+	background-color: #d0d0d0 !important;
+}
+
+/* .flex .w-8:nth-child(6) */
+.flex .w-8:nth-child(6){
+	background-color: #d0d0d0 !important;
+}
+
+/* .flex .w-8:nth-child(3), .flex .w-8:nth-child(4), .flex .w-8:nth-child(5) */
+.flex .w-8:nth-child(3), .flex .w-8:nth-child(4), .flex .w-8:nth-child(5){
+	background-color: #d0d0d0 !important;
+}
+
+/* .h-full .w-13 */
+.h-full .w-13{
+	transform: translatex(0px) translatey(11px);
+}
+
+/* #sidebar-contact-icon svg */
+#sidebar-contact-icon svg{
+	color: #1b1d21;
+}
+
+/* #icon-team-inbox svg */
+#icon-team-inbox svg{
+	color: #1b1d21;
+}
+
+/* .menu-option #conv-menu-item-team-inbox */
+.menu-option #conv-menu-item-team-inbox{
+	color: #1b1d21;
+	border-color: #1b1d21;
+}
+
+/* .d-flex #import-btn */
+.d-flex #import-btn{
+	border-color: #1b1d21;
+	border-width: 1px;
+	border-style: solid;
+}
+
+/* .fc-day-past .fc-col-header-cell-cushion:not([aria-label="July 28, 2026"]) */
+.fc-day-past .fc-col-header-cell-cushion:not([aria-label="July 28, 2026"]){
+	color: #98a2b3 !important;
+}
+
+/* .flex .sidebar-option-button:nth-child(1) */
+.flex .sidebar-option-button:nth-child(1){
+	background-color: #d0d0d0 !important;
+}
+
+/* .flex-shrink-0 .hr-button */
+.flex-shrink-0 .hr-button{
+	border-style: solid;
+	border-width: 1px;
+}
+
+/* .sidebar-option-button .hr-icon svg */
+.sidebar-option-button .hr-icon svg{
+	color: #1b1d21 !important;
+}
+
+/* .flex #location-dashboard_btn--edit-dashboard */
+.flex #location-dashboard_btn--edit-dashboard{
+	background-color: #1b1d21 !important;
+	border-style: solid;
+	border-width: 1px;
+	border-color: #1b1d21;
+}
+
+/* #conversations-empty-state #conversations-view-all-btn */
+#conversations-empty-state #conversations-view-all-btn{
+	background-color: #1b1d21;
+	border-color: #1b1d21;
+	border-width: 1px;
+}
+
+/* .tabulator-placeholder-contents .n-button */
+.tabulator-placeholder-contents .n-button{
+	background-color: #1b1d21 !important;
+	border-color: #1b1d21;
+	border-style: solid;
+	border-width: 1px;
+}
+
+/* .flex #primary-action-button */
+.flex #primary-action-button{
+	background-color: #1b1d21 !important;
+	border-color: #1b1d21;
+	border-style: solid;
+	border-width: 0px;
+}
+
+/* #primary-action-button .hr-button__content */
+#primary-action-button .hr-button__content{
+	border-width: 0px;
+	border-style: dotted;
+}
+
+/* #dropdown-my-inbox-trigger #conv-menu-item-dropdown-my-inbox */
+#dropdown-my-inbox-trigger #conv-menu-item-dropdown-my-inbox{
+	border-color: #1b1d21;
+}
+
+/* #icon-my-inbox svg */
+#icon-my-inbox svg{
+	color: #1b1d21;
+}
