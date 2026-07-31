@@ -55,7 +55,7 @@ Form / FB / SMS
   → REOS Researcher
   → REOS Coordinator
   → Concierge (qualify)
-       ├─ Hot / ready_to_book → Scheduler → Appointment Booked
+       ├─ Hot / ready_to_book → Scheduler → Appointment Booked → Follow-Up (post-book Q&A)
        ├─ Warm / Cold → Follow-Up (+ email drips)
        └─ ai_handoff → humans
   → Scout (daily unbooked Hot catch)

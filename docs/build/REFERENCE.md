@@ -29,7 +29,7 @@
 |---|---|---|---|
 | Concierge | Off | Off | Default after research (Coordinator) |
 | Scheduler | On | Off | `ready_to_book` |
-| Follow-Up | Off | Off | `temp_warm` / `temp_cold` |
+| Follow-Up | Off | Off | `temp_warm` / `temp_cold` / after `appt_booked` |
 
 ## Workflow catalog
 

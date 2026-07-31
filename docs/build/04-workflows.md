@@ -6,7 +6,7 @@ Build in **Automation → Workflows**. Full action tables: [`../WORKFLOWS.md`](.
 
 | # | Workflow | Trigger (summary) | Purpose |
 |---|---|---|---|
-| 1 | `REOS Appointment Booked` | Appointment Booked on REOS Consult | Stage Appointment Set, `appt_booked`, remove `ready_to_book`, confirm, notify |
+| 1 | `REOS Appointment Booked` | Appointment Booked on REOS Consult | Stage Appointment Set, `appt_booked`, remove `ready_to_book`, Follow-Up Active last, confirm, notify |
 | 2 | `REOS Intake` | Form / FB / optional inbound | Opp New → AI Qualifying + `ai_qualifying`. **No** Concierge Active |
 | 3 | `REOS Researcher` | Tag `ai_qualifying` | Channel/lang tags → `researcher_done`. **No** Concierge Active |
 | 4 | `REOS Coordinator` | `researcher_done`, `ready_to_book`, `temp_warm`/`temp_cold`, `ai_handoff`, `scout_priority` | Assign + exclusive bot; respect compliance |
@@ -32,9 +32,10 @@ Order matters. Typical exclusive routes (Active **last**):
 | Condition | Active bot |
 |---|---|
 | `compliance_hold` or `opted_out` | None (all Inactive) |
-| `ai_handoff` or `appt_booked` | None |
+| `ai_handoff` | None |
+| `ready_to_book` | Scheduler (first book or reschedule) |
+| `appt_booked` (no `ready_to_book`) | Follow-Up |
 | `coord_email_only` (email, no phone) | None |
-| `ready_to_book` | Scheduler |
 | `temp_warm` / `temp_cold` | Follow-Up |
 | Default after `researcher_done` | Concierge |
 

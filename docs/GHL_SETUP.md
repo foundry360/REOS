@@ -4,7 +4,7 @@ Simple native workflow. No external AI server.
 
 **Prefer the phased build guide:** [`BUILD.md`](BUILD.md) (phases 0–8 + [`build/CHECKLIST.md`](build/CHECKLIST.md)). This file is the narrative twin.
 
-**Flow:** Lead arrives → **Researcher** (channel) → **Coordinator** (assign + which bot) → **Concierge** qualifies → Hot/`ready_to_book` → **Scheduler** · Warm/Cold → **Follow-Up** · **Scout** daily priority · **Compliance Guard** stops bots on opt-out.
+**Flow:** Lead arrives → **Researcher** (channel) → **Coordinator** (assign + which bot) → **Concierge** qualifies → Hot/`ready_to_book` → **Scheduler** → book → **Follow-Up** (post-book Q&A) · Warm/Cold → **Follow-Up** · **Scout** daily priority · **Compliance Guard** stops bots on opt-out.
 
 Prompt packs: [`prompts/lead-concierge.md`](prompts/lead-concierge.md) · [`prompts/scheduler.md`](prompts/scheduler.md) · [`prompts/follow-up.md`](prompts/follow-up.md) · [`prompts/scout.md`](prompts/scout.md) · [`prompts/researcher.md`](prompts/researcher.md) · [`prompts/coordinator.md`](prompts/coordinator.md) · [`prompts/compliance-guard.md`](prompts/compliance-guard.md)  
 Workflows: [`WORKFLOWS.md`](WORKFLOWS.md)
@@ -109,7 +109,7 @@ Stages (in order):
 2. Paste [`prompts/follow-up.md`](prompts/follow-up.md) §1–§3 into Bot Goals.
 3. Actions: Contact info (light), Human handover — **no** Appointment Booking; prefer **Stop bot Off**.
 4. Build **`REOS Start Follow-Up`**: triggers `temp_warm` / `temp_cold` → Follow-Up Active; Concierge + Scheduler Inactive — see [`WORKFLOWS.md`](WORKFLOWS.md) Workflow I.
-5. Keep Warm/Cold drip workflows for email cadence; Follow-Up owns conversational check-ins.
+5. Keep Warm/Cold drip workflows for email cadence; Follow-Up owns conversational check-ins **and** post-book Q&A after `REOS Appointment Booked` sets Follow-Up Active.
 
 ### 5d. Scout (Phase 1 — The Scout)
 
@@ -186,7 +186,7 @@ Keep them linear. Let the bot handle conversational branching.
 
 **Triggers:** `researcher_done`, `ready_to_book`, `temp_warm`, `temp_cold`, `ai_handoff`, `scout_priority`  
 
-**Actions:** Assign if needed → if `compliance_hold`/`opted_out` keep bots off → else route (handoff → booked → email-only → Scheduler → Follow-Up → Concierge) → tag `coordinated`
+**Actions:** Assign if needed → if `compliance_hold`/`opted_out` keep bots off → else route (handoff → Scheduler/`ready_to_book` → Follow-Up/`appt_booked` → email-only → Follow-Up/temps → Concierge) → tag `coordinated`
 
 ### Workflow 1d — `REOS Compliance Guard`
 

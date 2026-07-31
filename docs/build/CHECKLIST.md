@@ -65,7 +65,7 @@ Use while building the **template** sub-account. For client installs after Snaps
 
 ## Phase 8 — Snapshot
 
-- [ ] Snapshot created with CAI + workflows + fields + tags + pipeline + calendar + lists  
+- [ ] Snapshot created with CAI + workflows + fields + tags + pipeline + calendar + lists + products  
 - [ ] Test load into empty sub-account  
 - [ ] Client onboarding checklist validated once  
 

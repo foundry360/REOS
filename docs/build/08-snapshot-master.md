@@ -13,6 +13,7 @@ When Phase 7 tests pass, package the master location as a **REOS Snapshot** for 
 - [ ] Smart Lists  
 - [ ] Conversation AI (bots, prompts, actions)  
 - [ ] Email / SMS templates used by drips  
+- [ ] Products (e.g. Setup Fee and other payment products)  
 
 ## Never in Snapshot (always manual per client)
 

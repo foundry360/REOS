@@ -33,11 +33,13 @@ Use a real phone you control for SMS tests.
 
 1. [ ] Contact with phone + `channel_sms` → add `researcher_done` → assigned user + Concierge Active + `coordinated`  
 2. [ ] Add `ready_to_book` → Scheduler Active; Concierge/Follow-Up Inactive  
-3. [ ] Add `temp_warm` (on a contact without `ready_to_book`) → Follow-Up Active  
-4. [ ] Email-only contact + `channel_email` → add `researcher_done` → `coord_email_only`, bots Inactive, agent notified  
-5. [ ] Add `ai_handoff` → all bots Inactive  
+3. [ ] After book / add `appt_booked` (no `ready_to_book`) → Follow-Up Active; Scheduler Inactive  
+4. [ ] With `appt_booked`, add `ready_to_book` again → Scheduler Active (reschedule)  
+5. [ ] Add `temp_warm` (on a contact without `ready_to_book` / `appt_booked`) → Follow-Up Active  
+6. [ ] Email-only contact + `channel_email` → add `researcher_done` → `coord_email_only`, bots Inactive, agent notified  
+7. [ ] Add `ai_handoff` → all bots Inactive  
 
-**Pass if:** only one specialist Active (or none for email/handoff/booked).
+**Pass if:** only one specialist Active (or none for email/handoff).
 
 ---
 
@@ -66,9 +68,11 @@ Use a real phone you control for SMS tests.
 8. [ ] AI Summary + Agent Brief populated  
 9. [ ] Bot offers times; book a slot  
 10. [ ] Appointment on calendar with notes; stage `Appointment Set`  
-11. [ ] Agent receives Hot notification  
+11. [ ] Tag `appt_booked`; Scheduler Inactive; **Follow-Up Active**  
+12. [ ] Agent receives Hot notification  
+13. [ ] Lead asks a post-book question → Follow-Up answers (no Scheduler)  
 
-**Pass if:** CRM + calendar + agent notify all correct.
+**Pass if:** CRM + calendar + agent notify correct, and Follow-Up owns post-book chat.
 
 ---
 

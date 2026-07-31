@@ -12,7 +12,7 @@
 | `temp_warm` | Warm nurture |
 | `temp_cold` | Cold nurture |
 | `ready_to_book` | Concierge/Hot → Scheduler |
-| `appt_booked` | Appointment Booked workflow |
+| `appt_booked` | Appointment Booked workflow; Follow-Up Active for post-book Q&A |
 | `ai_qualifying` | Starts Researcher |
 | `researcher_done` | Researcher finished (or standardize on `research_done`) |
 | `needs_contact_info` | No phone and no email |

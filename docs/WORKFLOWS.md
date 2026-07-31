@@ -101,12 +101,17 @@ Use **Option 1** unless you’re sure the bot enrollment path is available.
 | 2 | **Add Contact Tag** | `appt_booked` |
 | 3 | **Remove Contact Tag** | `ready_to_book` — required so “ready to book” smart lists clear |
 | 4 | **Remove Contact Tag** (optional) | `ai_qualifying` |
-| 5 | **If/Else — confirm on channel** (after `appt_booked`; check Meta before SMS) | Same body on each opener path: `You're booked! Reply here if you need to reschedule.` |
-| 5a | Tags include `source_facebook` | **Messenger** / **Facebook Interactive Messenger** → Reply to DM |
-| 5b | Tags include `source_instagram` | **Instagram Interactive Messenger** |
-| 5c | Tags include `channel_sms` | **Send SMS** |
-| 5d | None | skip contact message (agent notify still runs) |
-| 6 | **Internal Notification** / **Send Email** to assigned user | Subject: `Appointment booked — {{contact.first_name}}` · Body: include AI Summary / Agent Brief custom values |
+| 5 | **Update Conversation AI** | **REOS Concierge** → **Inactive** |
+| 6 | **Update Conversation AI** | **REOS Scheduler** → **Inactive** (Scheduler “disable after book” may already do this) |
+| 7 | **Update Conversation AI** | **REOS Follow-Up** → **Active** (**last** — owns post-book Q&A / reschedule requests) |
+| 8 | **If/Else — confirm on channel** (after Follow-Up Active; check Meta before SMS) | Same body on each opener path: `You're booked! Reply here if you need to reschedule.` |
+| 8a | Tags include `source_facebook` | **Messenger** / **Facebook Interactive Messenger** → Reply to DM |
+| 8b | Tags include `source_instagram` | **Instagram Interactive Messenger** |
+| 8c | Tags include `channel_sms` | **Send SMS** |
+| 8d | None | skip contact message (agent notify still runs) |
+| 9 | **Internal Notification** / **Send Email** to assigned user | Subject: `Appointment booked — {{contact.first_name}}` · Body: include AI Summary / Agent Brief custom values |
+
+**Why Follow-Up Active:** Scheduler turns off after book. Without assigning Follow-Up **Active** last, Assigned stays Scheduler Inactive and post-book replies go unanswered. Follow-Up answers questions quietly; if they need to reschedule, it tags `ready_to_book` so Scheduler takes over again.
 
 ### Filters (optional)
 
@@ -267,19 +272,10 @@ Prompt: [`prompts/coordinator.md`](prompts/coordinator.md)
    - **Yes** → Concierge / Scheduler / Follow-Up all **Inactive** → Internal Notification “Human handoff” → Add Tag `coordinated` → **End**  
    - **No** → continue  
 
-4. **If/Else** — has tag `appt_booked`?  
-   - **Yes** → all three bots **Inactive** → Add Tag `coordinated` → **End**  
-   - **No** → continue  
-
-5. **If/Else** — has tag `channel_email` **AND** Phone empty?  
-   - **Yes** → Add Tag `coord_email_only` → all three bots **Inactive** → Internal Notification: “Email-only lead — reach out by email” → Add Tag `coordinated` → **End**  
-   - **No** → continue  
-
-**Critical — action order:** each **Update Conversation AI** step **assigns** that bot to the contact. The **last** step wins as Assigned bot. Always put the bot that should own the thread **last**, with the status you want (usually **Active**). Putting Follow-Up/Scheduler **Inactive** last leaves Assigned = that bot + Inactive (silent forever). That is why the conversation UI says change bots in sub-account settings — Assigned is locked by workflow.
-
-6. **If/Else** — has tag `ready_to_book`?  
+4. **If/Else** — has tag `ready_to_book`?  
    - **Yes** → Concierge **Inactive** → Follow-Up **Inactive** → Scheduler **Active** (last) → **channel opener** (see below) → Add Tag `coordinated` → **End**  
    - **No** → continue  
+   - **Why before `appt_booked`:** first book and **reschedule** both use `ready_to_book`. Appointment Booked removes that tag after a successful book; Follow-Up can re-add it when they ask to move the time.  
    - **Why opener:** Conversation AI does not auto-speak when activated mid-thread; without this, Scheduler stays silent until the lead messages again.  
    - **Opener by channel** — do **not** stack all three on every contact. After Scheduler Active, add **If/Else** on tags, then one opener per branch:  
      | Tag | Action (Communication) |  
@@ -290,6 +286,17 @@ Prompt: [`prompts/coordinator.md`](prompts/coordinator.md)
      | `channel_sms` | **Send SMS** |  
      | None / unknown | skip opener (lead must reply) or Internal Notification |  
    - Same body on every opener: `Great. Let's get a consult on the calendar. Do mornings or afternoons work better?` 
+
+5. **If/Else** — has tag `appt_booked`?  
+   - **Yes** → Concierge **Inactive** → Scheduler **Inactive** → Follow-Up **Active** (last) → Add Tag `coordinated` → **End**  
+   - **No** → continue  
+   - **Why Follow-Up:** post-book questions and light support; do not leave Assigned = Scheduler Inactive.  
+
+6. **If/Else** — has tag `channel_email` **AND** Phone empty?  
+   - **Yes** → Add Tag `coord_email_only` → all three bots **Inactive** → Internal Notification: “Email-only lead — reach out by email” → Add Tag `coordinated` → **End**  
+   - **No** → continue  
+
+**Critical — action order:** each **Update Conversation AI** step **assigns** that bot to the contact. The **last** step wins as Assigned bot. Always put the bot that should own the thread **last**, with the status you want (usually **Active**). Putting Follow-Up/Scheduler **Inactive** last leaves Assigned = that bot + Inactive (silent forever). That is why the conversation UI says change bots in sub-account settings — Assigned is locked by workflow.
 
 7. **If/Else** — has tag `temp_warm` **OR** `temp_cold`?  
    - **Yes** → Concierge **Inactive** → Scheduler **Inactive** → Follow-Up **Active** (last) → Add Tag `coordinated` → **End**  
@@ -315,6 +322,8 @@ If trigger was `scout_priority` and you did not already notify: **Internal Notif
 |---|---|---|
 | Phone + `channel_sms` | `researcher_done` | Concierge Active, `coordinated` |
 | Phone | `ready_to_book` | Scheduler Active |
+| Phone + `appt_booked` (no `ready_to_book`) | any Coordinator trigger / re-run | Follow-Up Active |
+| Phone + `appt_booked` | `ready_to_book` (reschedule) | Scheduler Active |
 | Phone | `temp_warm` | Follow-Up Active |
 | Email only, no phone, `channel_email` | `researcher_done` | `coord_email_only`, bots Inactive, notify |
 | Any | `ai_handoff` | All bots Inactive |
@@ -670,17 +679,15 @@ Optional second trigger later: `temp_hot` added **and** tag `appt_booked` does n
 
 ### Actions (in order)
 
-1. **If/Else** — has tag `appt_booked`?  
-   - **Yes** → End (already booked)  
-   - **No** → continue  
-2. **If/Else** — has assigned user?  
+1. **If/Else** — has assigned user?  
    - **No** → **Assign to User**  
    - **Yes** → continue  
-3. **Update Conversation AI** (**Scheduler Active must be last** on every branch — Has user / Does not have user):  
+   - **Note:** Do **not** End on `appt_booked`. `ready_to_book` after a book is the **reschedule** path (Follow-Up re-adds the tag).  
+2. **Update Conversation AI** (**Scheduler Active must be last** on every branch — Has user / Does not have user):  
    Concierge **Inactive** → Follow-Up **Inactive** → Scheduler **Active** (last)  
    Wrong order (Scheduler Active then Follow-Up Inactive) leaves Assigned = Follow-Up Inactive and kills outreach.  
    Prefer **pausing Start Scheduler** if **REOS Coordinator** already owns the `ready_to_book` route (avoid double flips + double openers).  
-4. **Channel opener** (only if Start Scheduler is live and Coordinator does not already send it): FB / IG / SMS If/Else after Scheduler Active — body:  
+3. **Channel opener** (only if Start Scheduler is live and Coordinator does not already send it): FB / IG / SMS If/Else after Scheduler Active — body:  
    `Great. Let's get a consult on the calendar. Do mornings or afternoons work better?` 
 
 **Publish.**
@@ -709,7 +716,7 @@ Same calendar settings as before (Buyer/Seller Consult):
 
 1. On a test contact with an opp: add tag **`ready_to_book`**  
 2. Confirm **REOS Start Scheduler** runs → Scheduler bot **Active**  
-3. Manually book/confirm appointment → `REOS Appointment Booked` still moves stage + `appt_booked`  
+3. Manually book/confirm appointment → `REOS Appointment Booked` moves stage + `appt_booked`, Scheduler Inactive, **Follow-Up Active**  
 
 ---
 
@@ -733,7 +740,7 @@ Starts the **REOS Follow-Up** bot for Warm/Cold leads.
 ### Actions (in order)
 
 1. **If/Else** — tag `appt_booked` exists? *(or Last appointment at not empty, if that is what you use)*  
-   - **Yes** → End  
+   - **Yes** → End (`REOS Appointment Booked` / Coordinator already set Follow-Up Active for post-book)  
    - **No** → continue  
 2. **If/Else** — tag `ready_to_book` exists?  
    - **Yes** → End (Scheduler owns them)  
@@ -756,7 +763,8 @@ Concierge (qualify)
   ├─ temp_hot / ready_to_book → Scheduler (book)
   └─ temp_warm / temp_cold → Follow-Up (nurture)
 Follow-Up hears “let’s meet” → ready_to_book → Scheduler
-appt_booked → stop Follow-Up / Scheduler booking path done
+appt_booked → Scheduler off · Follow-Up Active (post-book Q&A)
+Follow-Up hears reschedule → ready_to_book → Scheduler again
 ```
 
 ### Manual test (no SMS)
@@ -896,8 +904,10 @@ Use this when tags look correct (`research_done` + `coordinated`) but the bot st
 |---|---|---|
 | **REOS Coordinator** | `ready_to_book` | Inactive (Scheduler Active) |
 | **REOS Coordinator** | `temp_warm` / `temp_cold` | Inactive (Follow-Up Active) |
-| **REOS Coordinator** | `ai_handoff` / `appt_booked` / `compliance_hold` / `opted_out` | Inactive |
+| **REOS Coordinator** | `appt_booked` (no `ready_to_book`) | Inactive (Follow-Up Active) |
+| **REOS Coordinator** | `ai_handoff` / `compliance_hold` / `opted_out` | Inactive |
 | **REOS Coordinator** | `channel_email` + no phone | Inactive (`coord_email_only`) |
+| **REOS Appointment Booked** | calendar booked | Inactive (Follow-Up Active) |
 | **REOS Start Scheduler** | `ready_to_book` | Optional: Concierge Inactive |
 | **REOS Start Follow-Up** | `temp_warm` / `temp_cold` | Concierge Inactive |
 | **REOS Compliance Guard** | `opted_out` / `compliance_hold` / `dnd` | All bots Inactive |

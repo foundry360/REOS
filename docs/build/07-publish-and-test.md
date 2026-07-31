@@ -21,7 +21,7 @@ Run [`../TESTING.md`](../TESTING.md). Minimum pass bar:
 | Researcher | Phone → `channel_sms` + `researcher_done`; empty → `needs_contact_info` |
 | Coordinator | Exclusive Concierge / Scheduler / Follow-Up Active |
 | Compliance | `opted_out` → all bots Inactive + hold |
-| Hot → book | `ready_to_book` → Scheduler → `appt_booked` + Appointment Set |
+| Hot → book | `ready_to_book` → Scheduler → `appt_booked` + Appointment Set + Follow-Up Active |
 | Warm/Cold | Follow-Up + nurture path |
 | Handoff | Bots off + agent notify |
 | Form → SMS | Full path on a phone you control |

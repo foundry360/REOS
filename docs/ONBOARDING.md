@@ -9,7 +9,7 @@ Support sub-account tracks stages only (New → Snapshot loaded → Connections 
 ## 0. Install Snapshot
 
 - [ ] Create sub-account  
-- [ ] Load REOS Snapshot (fields, tags, pipelines, workflows, calendars, forms, smart lists, Conversation AI, templates)  
+- [ ] Load REOS Snapshot (fields, tags, pipelines, workflows, calendars, forms, smart lists, Conversation AI, templates, products)  
 - [ ] Resolve conflicts  
 - [ ] Record Location ID  
 
@@ -39,6 +39,7 @@ Support sub-account tracks stages only (New → Snapshot loaded → Connections 
 - [ ] Three bots; Concierge Booking Off; Scheduler Booking On  
 - [ ] Core workflows present  
 - [ ] Smart lists present  
+- [ ] Products present (e.g. Setup Fee)  
 
 ## 5. Remap connections
 
